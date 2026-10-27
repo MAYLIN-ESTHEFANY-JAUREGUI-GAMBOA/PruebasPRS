@@ -1,0 +1,370 @@
+<div class="civic-page mun-page">
+  <h1 class="mun-sr-only">Ciudadanos</h1>
+
+  <section class="mun-shell" aria-label="Directorio de ciudadanos">
+    <header class="mun-bar">
+      <div class="mun-tabs" role="group" aria-label="Filtrar por estado de cuenta">
+        @for (f of filtrosEstado; track f.value) {
+          <button type="button" class="mun-tabs__btn"
+            [class.is-active]="filtroEstado === f.value"
+            [attr.aria-pressed]="filtroEstado === f.value"
+            (click)="filtroEstado = f.value; aplicarFiltros()">
+            {{ f.label }}
+            <span class="mun-tabs__count">{{ conteo(f.value) }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="mun-bar__actions">
+        <label class="mun-search">
+          <span class="mun-sr-only">Buscar ciudadanos</span>
+          <svg class="mun-icon" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.2-5.2M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15Z"/>
+          </svg>
+          <input type="search" [(ngModel)]="busqueda" (ngModelChange)="aplicarFiltros()" placeholder="DNI, nombre, teléfono o email" autocomplete="off" />
+        </label>
+        <button type="button" class="mun-icon-btn" (click)="cargarDatos()" [disabled]="cargando"
+          [attr.aria-label]="cargando ? 'Actualizando' : 'Refrescar'">
+          <svg class="mun-icon" [class.is-spinning]="cargando" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>
+          </svg>
+        </button>
+        @if (puedeExportar) {
+          <div class="mun-export" role="group" aria-label="Exportar ciudadanos">
+            <button type="button" class="mun-btn mun-btn--ghost" (click)="exportar('pdf')"
+              [disabled]="generandoReporte || !ciudadanosFiltrados.length" title="Ciudadanos listados, en PDF">PDF</button>
+            <button type="button" class="mun-btn mun-btn--ghost" (click)="exportar('xlsx')"
+              [disabled]="generandoReporte || !ciudadanosFiltrados.length" title="Ciudadanos listados, en Excel">Excel</button>
+          </div>
+        }
+        <button type="button" class="mun-btn mun-btn--solid" (click)="abrirModalCrearUsuario()">
+          <svg class="mun-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+          </svg>
+          Nuevo ciudadano
+        </button>
+      </div>
+    </header>
+
+    <div class="mun-body">
+      @if (cargando && !usuarios.length) {
+        <div class="mun-split" aria-hidden="true">
+          <ul class="mun-index">
+            @for (i of [1, 2, 3, 4, 5]; track i) {
+              <li class="mun-index__skel"><span class="mun-seal mun-seal--sm"></span><span class="mun-skel__line"></span></li>
+            }
+          </ul>
+          <div class="mun-ficha mun-ficha--skel"><span class="mun-skel__line"></span><span class="mun-skel__line"></span></div>
+        </div>
+      } @else if (errorCarga) {
+        <div class="mun-empty mun-empty--error" role="alert">
+          <p class="mun-empty__title">No se pudieron cargar los datos</p>
+          <p class="mun-empty__text">{{ errorCarga }}</p>
+          <button type="button" class="mun-btn" (click)="cargarDatos()">Reintentar</button>
+        </div>
+      } @else if (ciudadanosFiltrados.length) {
+        <div class="mun-split">
+          <nav class="mun-index usr-index" aria-label="Padrón de ciudadanos">
+            @for (g of grupos; track g.letra) {
+              <section class="usr-index__group" [attr.aria-label]="'Apellidos con ' + g.letra">
+                <h3 class="usr-index__letter" aria-hidden="true">{{ g.letra }}</h3>
+                <ul>
+                  @for (u of g.usuarios; track u.id) {
+                    <li>
+                      <button type="button" class="mun-index__item" [class.is-off]="u.estado !== 'ACTIVO'"
+                        [class.is-current]="seleccionado?.id === u.id" [attr.aria-current]="seleccionado?.id === u.id ? 'true' : null"
+                        (click)="seleccionado = u">
+                        <span class="mun-seal mun-seal--sm" aria-hidden="true">
+                          @if (u.fotoPerfilUrl) { <img [src]="u.fotoPerfilUrl" alt="" /> } @else { {{ inicialesUsuario(u) }} }
+                        </span>
+                        <span class="mun-index__name">
+                          <span class="mun-index__lugar">{{ nombreIndice(u) }}</span>
+                          <span class="mun-index__meta mun-mono">DNI {{ u.dni }}</span>
+                        </span>
+                        <span class="mun-dot" [class.is-off]="u.estado === 'INACTIVO'" [class.usr-dot--blocked]="u.estado === 'SUSPENDIDO'"
+                          [attr.title]="etiquetaEstado(u.estado)">
+                          <span class="mun-sr-only">{{ etiquetaEstado(u.estado) }}</span>
+                        </span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+          </nav>
+
+          @if (seleccionado; as u) {
+            @let off = u.estado !== 'ACTIVO';
+            @let m = mrz(u);
+            <article class="mun-ficha usr-ficha" [class.is-off]="off" [attr.aria-labelledby]="'ficha-' + u.id">
+              <header class="usr-ficha__head">
+                <div>
+                  <p class="mun-ficha__kicker">
+                    Cuenta ciudadana
+                    <span class="mun-status" [class.is-off]="u.estado === 'INACTIVO'" [class.usr-status--blocked]="u.estado === 'SUSPENDIDO'">{{ etiquetaEstado(u.estado) }}</span>
+                  </p>
+                  <h2 class="mun-ficha__lugar" [id]="'ficha-' + u.id">{{ nombreUsuario(u) }}</h2>
+                </div>
+                <div class="mun-ficha__actions">
+                  <button type="button" class="mun-btn mun-btn--solid" (click)="abrirModalEditarUsuario(u)">Editar datos</button>
+                  @if (u.estado === 'SUSPENDIDO') {
+                    <span class="usr-row__note">Bloqueo permanente: se levanta en Castigos</span>
+                  } @else {
+                    <button type="button" class="mun-link" [class.mun-link--danger]="!off" (click)="toggleEstadoUsuario(u)" [disabled]="guardando">
+                      {{ off ? 'Activar cuenta' : 'Desactivar cuenta' }}
+                    </button>
+                  }
+                </div>
+              </header>
+
+              <div class="usr-ficha__grid">
+                <!-- Carnet: la ficha se lee como el documento con que el ciudadano se identifica. -->
+                <figure class="usr-carnet" [attr.aria-label]="'Carnet de ' + nombreUsuario(u)">
+                  <div class="usr-carnet__band">
+                    <span>Padrón ciudadano</span>
+                    <span>App de alertas</span>
+                  </div>
+                  <div class="usr-carnet__body">
+                    <span class="usr-carnet__photo" aria-hidden="true">
+                      @if (u.fotoPerfilUrl) { <img [src]="u.fotoPerfilUrl" alt="" /> } @else { {{ inicialesUsuario(u) }} }
+                    </span>
+                    <dl class="usr-carnet__data">
+                      <div class="usr-carnet__dni"><dt>DNI</dt><dd class="mun-mono">{{ u.dni }}</dd></div>
+                      <div><dt>Apellidos</dt><dd>{{ u.apellidos || '—' }}</dd></div>
+                      <div><dt>Nombres</dt><dd>{{ u.nombres || '—' }}</dd></div>
+                    </dl>
+                  </div>
+                  <p class="usr-carnet__mrz" aria-hidden="true">{{ m[0] }}<br />{{ m[1] }}</p>
+                </figure>
+
+                <div class="usr-ficha__side">
+                  <section class="mun-block" aria-labelledby="usr-cto-title">
+                    <h3 id="usr-cto-title" class="mun-block__title">Contacto</h3>
+                    <dl class="mun-contact-list">
+                      <div>
+                        <dt>Email</dt>
+                        <dd>@if (u.email) { <a [href]="'mailto:' + u.email">{{ u.email }}</a> } @else { <span class="is-muted">Sin email</span> }</dd>
+                      </div>
+                      <div>
+                        <dt>Teléfono</dt>
+                        <dd>@if (u.telefono) { <a [href]="'tel:' + u.telefono.replaceAll(' ', '')">{{ u.telefono }}</a> } @else { <span class="is-muted">Sin teléfono</span> }</dd>
+                      </div>
+                    </dl>
+                  </section>
+
+                  <section class="mun-block" aria-labelledby="usr-reg-title">
+                    <h3 id="usr-reg-title" class="mun-block__title">Registro</h3>
+                    <dl class="mun-contact-list">
+                      <div>
+                        <dt>Alta</dt>
+                        <dd [class.is-muted]="!u.creadoEn">{{ u.creadoEn ? (u.creadoEn | date: 'dd/MM/yyyy') : 'Sin fecha' }}</dd>
+                      </div>
+                      <div>
+                        <dt>RENIEC</dt>
+                        <dd [class.is-muted]="!u.verificacionReniecEstado">{{ etiquetaReniec(u.verificacionReniecEstado) }}</dd>
+                      </div>
+                      @if (u.registroRevisadoEn) {
+                        <div>
+                          <dt>Aprobado</dt>
+                          <dd>{{ u.registroRevisadoEn | date: 'dd/MM/yyyy' }}</dd>
+                        </div>
+                      }
+                    </dl>
+                  </section>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      } @else if (hayFiltrosActivos()) {
+        <div class="mun-empty">
+          <p class="mun-empty__title">Sin coincidencias</p>
+          <p class="mun-empty__text">Ningún ciudadano coincide con la búsqueda o el filtro.</p>
+          <button type="button" class="mun-link" (click)="limpiarFiltros()">Ver todos</button>
+        </div>
+      } @else {
+        <div class="mun-empty">
+          <span class="mun-seal mun-seal--lg mun-seal--ghost" aria-hidden="true">+</span>
+          <p class="mun-empty__title">Aún no hay ciudadanos</p>
+          <p class="mun-empty__text">Los ciudadanos se registran desde la app móvil, o puedes darlos de alta aquí con su DNI.</p>
+          <button type="button" class="mun-btn mun-btn--solid" (click)="abrirModalCrearUsuario()">Registrar ciudadano</button>
+        </div>
+      }
+    </div>
+  </section>
+</div>
+
+<!-- Modal: crear / editar ciudadano -->
+@if (modalUsuarioAbierto) {
+  <div ngSkipHydration class="civic-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-usuario-title"
+       (click)="cerrarModalUsuario()">
+    <div class="civic-modal civic-modal--lg mun-modal" (click)="$event.stopPropagation()">
+      <header class="mun-modal__header">
+        <div class="usr-modal__head">
+          <span class="mun-seal mun-seal--lg" [class.mun-seal--ghost]="!formUsuario.nombres" aria-hidden="true">
+            {{ formUsuario.nombres ? iniciales(formUsuario.nombres + ' ' + formUsuario.apellidos) : '+' }}
+          </span>
+          <div>
+            <p class="mun-kicker">{{ modoUsuario === 'crear' ? 'Alta de cuenta ciudadana' : 'Editar cuenta ciudadana' }}</p>
+            <h2 id="modal-usuario-title" class="mun-modal__title">
+              {{ modoUsuario === 'editar' && usuarioSeleccionado ? nombreUsuario(usuarioSeleccionado) : 'Nuevo ciudadano' }}
+            </h2>
+            @if (modoUsuario === 'editar' && usuarioSeleccionado) {
+              <p class="usr-modal__code"><span class="mun-mono">DNI {{ usuarioSeleccionado.dni }}</span> · {{ etiquetaEstado(usuarioSeleccionado.estado) }}</p>
+            }
+          </div>
+        </div>
+        <button type="button" class="mun-icon-btn" (click)="cerrarModalUsuario()" aria-label="Cerrar">
+          <svg class="mun-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </header>
+
+      <div class="mun-modal__body usr-form">
+        <section class="usr-sec" aria-labelledby="usr-sec-id">
+          <div class="usr-sec__head">
+            <h3 id="usr-sec-id" class="usr-sec__title">Identidad</h3>
+            <p class="usr-sec__lead">{{ modoUsuario === 'crear' ? 'Con el DNI verificamos que la persona no tenga ya una cuenta.' : 'El DNI no se puede cambiar.' }}</p>
+          </div>
+          <div class="mun-grid mun-grid--2">
+            @if (modoUsuario === 'crear') {
+              <div class="mun-field mun-field--wide usr-dni" [class.is-invalid]="tieneErrorUsuario('dni')">
+                <label for="usr-dni">DNI <span class="mun-req" aria-hidden="true">*</span></label>
+                <input id="usr-dni" class="mun-input mun-mono" maxlength="8"
+                  [ngModel]="formUsuario.dni" (ngModelChange)="onDniInput($event)" (blur)="validarCampoUsuario('dni')"
+                  placeholder="8 dígitos" inputmode="numeric" autocomplete="off"
+                  [attr.aria-invalid]="tieneErrorUsuario('dni')"
+                  [attr.aria-describedby]="tieneErrorUsuario('dni') ? 'usr-dni-error' : null" />
+                @if (tieneErrorUsuario('dni')) {
+                  <p id="usr-dni-error" class="mun-field__error" role="alert">{{ erroresUsuario['dni'] }}</p>
+                } @else if (buscandoDni) {
+                  <p class="mun-field__hint">Verificando DNI…</p>
+                }
+              </div>
+              @if (usuarioExistente) {
+                <div class="usr-exists mun-field--wide" role="status">
+                  <p>Este DNI ya tiene cuenta. Sus datos se muestran abajo y no se puede registrar de nuevo.</p>
+                  <button type="button" class="mun-btn mun-btn--sm" (click)="editarUsuarioExistente()">Editar esa cuenta</button>
+                </div>
+              }
+            }
+            <div class="mun-field" [class.is-invalid]="tieneErrorUsuario('nombres')">
+              <label for="usr-nombres">Nombres <span class="mun-req" aria-hidden="true">*</span></label>
+              <input id="usr-nombres" class="mun-input" maxlength="80"
+                [(ngModel)]="formUsuario.nombres" [disabled]="!!usuarioExistente"
+                (ngModelChange)="validarCampoUsuario('nombres')" (blur)="validarCampoUsuario('nombres')"
+                autocomplete="given-name"
+                [attr.aria-invalid]="tieneErrorUsuario('nombres')"
+                [attr.aria-describedby]="tieneErrorUsuario('nombres') ? 'usr-nombres-error' : null" />
+              @if (tieneErrorUsuario('nombres')) {
+                <p id="usr-nombres-error" class="mun-field__error" role="alert">{{ erroresUsuario['nombres'] }}</p>
+              }
+            </div>
+            <div class="mun-field" [class.is-invalid]="tieneErrorUsuario('apellidos')">
+              <label for="usr-apellidos">Apellidos <span class="mun-req" aria-hidden="true">*</span></label>
+              <input id="usr-apellidos" class="mun-input" maxlength="80"
+                [(ngModel)]="formUsuario.apellidos" [disabled]="!!usuarioExistente"
+                (ngModelChange)="validarCampoUsuario('apellidos')" (blur)="validarCampoUsuario('apellidos')"
+                autocomplete="family-name"
+                [attr.aria-invalid]="tieneErrorUsuario('apellidos')"
+                [attr.aria-describedby]="tieneErrorUsuario('apellidos') ? 'usr-apellidos-error' : null" />
+              @if (tieneErrorUsuario('apellidos')) {
+                <p id="usr-apellidos-error" class="mun-field__error" role="alert">{{ erroresUsuario['apellidos'] }}</p>
+              }
+            </div>
+          </div>
+        </section>
+
+        @if (modoUsuario === 'crear' && !usuarioExistente) {
+          <section class="usr-sec" aria-labelledby="usr-sec-acc">
+            <div class="usr-sec__head">
+              <h3 id="usr-sec-acc" class="usr-sec__title">Acceso a la app</h3>
+              <p class="usr-sec__lead">El ciudadano ingresa a la app móvil con su DNI y esta contraseña.</p>
+            </div>
+            <div class="mun-grid mun-grid--2">
+              <div class="mun-field" [class.is-invalid]="tieneErrorUsuario('password')">
+                <label for="usr-pass">Contraseña <span class="mun-req" aria-hidden="true">*</span></label>
+                <input id="usr-pass" type="password" class="mun-input" maxlength="128"
+                  [(ngModel)]="formUsuario.password"
+                  (ngModelChange)="validarCampoUsuario('password')" (blur)="validarCampoUsuario('password')"
+                  placeholder="Mínimo 6 caracteres" autocomplete="new-password"
+                  [attr.aria-invalid]="tieneErrorUsuario('password')"
+                  [attr.aria-describedby]="tieneErrorUsuario('password') ? 'usr-pass-error' : null" />
+                @if (tieneErrorUsuario('password')) {
+                  <p id="usr-pass-error" class="mun-field__error" role="alert">{{ erroresUsuario['password'] }}</p>
+                }
+              </div>
+            </div>
+          </section>
+        }
+
+        <section class="usr-sec" aria-labelledby="usr-sec-cto">
+          <div class="usr-sec__head">
+            <h3 id="usr-sec-cto" class="usr-sec__title">Contacto <span class="mun-opt">opcional</span></h3>
+            <p class="usr-sec__lead">Para comunicarse con el ciudadano.</p>
+          </div>
+          <div class="mun-grid mun-grid--2">
+            <div class="mun-field" [class.is-invalid]="tieneErrorUsuario('email')">
+              <label for="usr-email">Email</label>
+              <input id="usr-email" type="email" class="mun-input" maxlength="120"
+                [(ngModel)]="formUsuario.email" [disabled]="!!usuarioExistente"
+                (ngModelChange)="validarCampoUsuario('email')" (blur)="validarCampoUsuario('email')"
+                autocomplete="email" placeholder="correo@ejemplo.com"
+                [attr.aria-invalid]="tieneErrorUsuario('email')"
+                [attr.aria-describedby]="tieneErrorUsuario('email') ? 'usr-email-error' : null" />
+              @if (tieneErrorUsuario('email')) {
+                <p id="usr-email-error" class="mun-field__error" role="alert">{{ erroresUsuario['email'] }}</p>
+              }
+            </div>
+            <div class="mun-field" [class.is-invalid]="tieneErrorUsuario('telefono')">
+              <label for="usr-tel">Teléfono</label>
+              <input id="usr-tel" class="mun-input" maxlength="20"
+                [ngModel]="formUsuario.telefono" [disabled]="!!usuarioExistente"
+                (ngModelChange)="onTelefonoInput($event)" (blur)="validarCampoUsuario('telefono')"
+                inputmode="tel" autocomplete="tel" placeholder="987 654 321"
+                [attr.aria-invalid]="tieneErrorUsuario('telefono')"
+                [attr.aria-describedby]="tieneErrorUsuario('telefono') ? 'usr-tel-error' : 'usr-tel-hint'" />
+              @if (tieneErrorUsuario('telefono')) {
+                <p id="usr-tel-error" class="mun-field__error" role="alert">{{ erroresUsuario['telefono'] }}</p>
+              } @else {
+                <p id="usr-tel-hint" class="mun-field__hint">Celular de 9 dígitos o fijo de 7–8.</p>
+              }
+            </div>
+          </div>
+        </section>
+
+        @if (errorModal) {
+          <p class="mun-modal__error" role="alert">{{ errorModal }}</p>
+        }
+      </div>
+
+      <footer class="mun-modal__footer">
+        <button type="button" class="mun-link mun-modal__cancel" (click)="cerrarModalUsuario()" [disabled]="guardando">Cancelar</button>
+        <button type="button" class="mun-btn mun-btn--solid" (click)="guardarUsuario()" [disabled]="guardando || !formularioUsuarioValido">
+          {{ guardando ? 'Guardando…' : (modoUsuario === 'crear' ? 'Registrar ciudadano' : 'Guardar cambios') }}
+        </button>
+      </footer>
+    </div>
+  </div>
+}
+
+<!-- Modal: confirmación -->
+@if (modalConfirmacion; as c) {
+  <div ngSkipHydration class="civic-modal-backdrop" role="alertdialog" aria-modal="true"
+       aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-desc" (click)="cerrarConfirmacion()">
+    <div class="civic-modal civic-modal--sm mun-modal" (click)="$event.stopPropagation()">
+      <header class="mun-modal__header">
+        <div>
+          <h2 id="confirm-modal-title" class="mun-modal__title">{{ c.titulo }}</h2>
+          <p id="confirm-modal-desc" class="mun-modal__text">{{ c.mensaje }}</p>
+        </div>
+      </header>
+      <footer class="mun-modal__footer">
+        <button type="button" class="mun-btn mun-btn--ghost" (click)="cerrarConfirmacion()">Cancelar</button>
+        <button type="button" class="mun-btn" [class.mun-btn--solid]="!c.peligro" [class.mun-btn--danger]="c.peligro"
+          (click)="confirmarAccion()">{{ c.confirmarLabel }}</button>
+      </footer>
+    </div>
+  </div>
+}

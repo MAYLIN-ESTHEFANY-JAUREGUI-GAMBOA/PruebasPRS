@@ -1,0 +1,235 @@
+/* Roles — reutiliza el tablero de Municipalidades (tokens, barra, botones, modal); aquí solo el catálogo. */
+
+.rol-bar__copy {
+  padding-bottom: var(--space-ms);
+}
+
+.rol-bar__copy .mun-bar__title {
+  padding-bottom: 0.125rem;
+}
+
+.rol-bar__meta {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+}
+
+/* Catálogo: filas con columnas compartidas (subgrid) para que nombre, descripción y estado queden alineados. */
+.rol-list {
+  display: grid;
+  grid-template-columns: auto minmax(11rem, 15rem) minmax(0, 1fr) 8.5rem auto;
+  margin: 0;
+  padding: var(--space-sm) var(--space-xl) var(--space-xl);
+  list-style: none;
+}
+
+.rol-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--line);
+  animation: mun-in 260ms var(--ease-out) both;
+}
+
+.rol-row:last-child {
+  border-bottom: 0;
+}
+
+.rol-row__name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.rol-row__name strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.rol-row__name .mun-mono {
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+
+.rol-row__desc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  max-width: 60ch;
+  margin: 0;
+  color: var(--ink);
+}
+
+.rol-row__scope {
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+}
+
+.rol-row__state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+.rol-row__date {
+  font-size: 0.8125rem;
+  color: var(--ink-3);
+}
+
+.rol-row__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+}
+
+/* Pendiente: el sistema lo reconoce pero aún no existe; se ve apagado con su acción a mano. */
+.rol-row.is-pending .rol-row__name strong,
+.rol-row.is-pending .rol-row__desc {
+  color: var(--ink-2);
+}
+
+.rol-row__pending {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.rol-row.is-off .mun-seal {
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+
+.rol-row--skel {
+  display: flex;
+}
+
+.rol-row--skel .mun-skel__line {
+  flex: 1;
+  max-width: 24rem;
+}
+
+/* Resultado de importación: aviso sobre el catálogo, no otra tarjeta. */
+.rol-import {
+  margin: var(--space-lg) var(--space-xl) 0;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--r-lg);
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.rol-import__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.rol-import__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.rol-import__list {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: var(--space-sm) var(--space-md);
+  align-items: center;
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rol-import__list li {
+  display: contents;
+}
+
+.rol-import__detail {
+  font-size: 0.875rem;
+  color: var(--ink-2);
+}
+
+/* Modal */
+.rol-modal__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.rol-modal__code {
+  margin: var(--space-xs) 0 0;
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+}
+
+.rol-modal__body {
+  gap: var(--space-lg);
+}
+
+.rol-modal__desc {
+  height: auto;
+  padding-block: var(--space-sm);
+  line-height: 1.45;
+  resize: vertical;
+}
+
+/* El tablero (.mun-shell) es el contenedor "padron". */
+@container padron (max-width: 52rem) {
+  .rol-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rol-row {
+    grid-column: 1 / -1;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-xs) var(--space-md);
+  }
+
+  .rol-row .mun-seal {
+    grid-row: span 3;
+    align-self: start;
+  }
+
+  .rol-row__desc,
+  .rol-row__state {
+    grid-column: 2 / -1;
+  }
+
+  .rol-row__state {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .rol-row__actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 767px) {
+  .rol-list {
+    padding-inline: var(--space-md);
+  }
+
+  .rol-import {
+    margin-inline: var(--space-md);
+  }
+
+  .rol-bar__copy {
+    flex: 1 1 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rol-row {
+    animation: none;
+  }
+}

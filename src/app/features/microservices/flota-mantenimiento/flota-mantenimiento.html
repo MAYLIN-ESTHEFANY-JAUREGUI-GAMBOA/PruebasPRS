@@ -1,0 +1,1176 @@
+<div class="min-h-full bg-slate-50 pb-12">
+
+  <!-- CABECERA PRINCIPAL Y KPIS -->
+  <section class="bg-white border-b border-slate-200 px-6 lg:px-8 py-6 mb-6">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      
+      <!-- Título institucional -->
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-amber-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-amber-600/20 text-white">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.32l-3.27 3.27-2.828-2.828 3.27-3.27a4.5 4.5 0 00-6.32 4.486c.048.58.024 1.193-.14 1.743"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-xs text-amber-700 font-bold uppercase tracking-wider mb-1">Mantenimiento de Flota Vehicular</p>
+          <h1 class="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">Órdenes de Mantenimiento</h1>
+          <p class="text-sm text-slate-500 mt-0.5">Control del ciclo de vida operativo, diagnósticos en taller y altas técnicas</p>
+        </div>
+      </div>
+
+      <!-- Tarjetas KPI -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="px-5 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+          <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total</p>
+          <p class="text-2xl font-black text-slate-800">{{ kpis().total }}</p>
+        </div>
+        <div class="px-5 py-3 rounded-2xl bg-blue-50 border border-blue-200 text-center">
+          <p class="text-[11px] font-bold text-blue-700 uppercase tracking-wider">En Taller</p>
+          <p class="text-2xl font-black text-blue-800">{{ kpis().inDiagnosis + kpis().inWorkshop }}</p>
+        </div>
+        <div class="px-5 py-3 rounded-2xl bg-purple-50 border border-purple-200 text-center">
+          <p class="text-[11px] font-bold text-purple-700 uppercase tracking-wider">Calidad</p>
+          <p class="text-2xl font-black text-purple-800">{{ kpis().qualityControl }}</p>
+        </div>
+        <div class="px-5 py-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+          <p class="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Altas</p>
+          <p class="text-2xl font-black text-emerald-800">{{ kpis().completed }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTENEDOR CENTRAL -->
+  <div class="px-6 lg:px-8 space-y-6">
+
+    <!-- BARRA DE BÚSQUEDA Y ACCIÓN -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+      <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        
+        <!-- Buscador -->
+        <div class="relative flex-1">
+          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+            </svg>
+          </div>
+          <input type="text"
+                 [ngModel]="searchQuery()"
+                 (ngModelChange)="searchQuery.set($event)"
+                 placeholder="Buscar por placa, código ORD, motivo o DNI reportante..."
+                 class="w-full h-11 pl-11 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white text-sm transition" />
+        </div>
+
+        <!-- Botones de Acción y Exportación -->
+        <div class="flex items-center gap-2">
+          @if (canExport()) {
+            <!-- Exportar PDF Oficial -->
+            <button type="button"
+                    (click)="downloadPdf()"
+                    [disabled]="isGeneratingReport() || filteredOrders().length === 0"
+                    title="Exportar listado a PDF con membrete institucional (AS241S6)"
+                    aria-label="Exportar listado a PDF"
+                    class="inline-flex items-center gap-1.5 px-3.5 h-11 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:scale-95 text-slate-700 font-bold text-xs transition cursor-pointer shadow-sm disabled:opacity-50">
+              @if (isGeneratingReport()) {
+                <svg class="w-4 h-4 animate-spin text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+              } @else {
+                <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                </svg>
+              }
+              <span>{{ isGeneratingReport() ? 'Generando…' : 'PDF' }}</span>
+            </button>
+
+            <!-- Exportar Excel Oficial -->
+            <button type="button"
+                    (click)="downloadExcel()"
+                    [disabled]="isGeneratingReport() || filteredOrders().length === 0"
+                    title="Exportar listado a Excel (XLSX) con resumen de filtros (AS241S6)"
+                    aria-label="Exportar listado a Excel"
+                    class="inline-flex items-center gap-1.5 px-3.5 h-11 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:scale-95 text-slate-700 font-bold text-xs transition cursor-pointer shadow-sm disabled:opacity-50">
+              @if (isGeneratingReport()) {
+                <svg class="w-4 h-4 animate-spin text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+              } @else {
+                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-3.75 0V5.625m0 12.75a1.125 1.125 0 001.125 1.125m0-13.875A1.125 1.125 0 002.25 5.625m1.125 0h1.5C5.496 5.625 6 6.129 6 6.75m-3.75 0v11.625m16.5-11.625h-1.5C16.504 5.625 16 6.129 16 6.75m3.75-1.125a1.125 1.125 0 011.125 1.125m-1.125 0v11.625m0 0a1.125 1.125 0 01-1.125 1.125m1.125-1.125h-1.5c-.621 0-1.125.504-1.125 1.125"/>
+                </svg>
+              }
+              <span>{{ isGeneratingReport() ? 'Generando…' : 'Excel' }}</span>
+            </button>
+          }
+
+          <!-- Botón Nueva Orden -->
+          <button type="button"
+                  (click)="openCreateModal()"
+                  class="inline-flex items-center justify-center gap-2 px-5 h-11 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-sm shadow-md shadow-amber-600/20 transition-all cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+            </svg>
+            <span>Nueva Orden</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros Rápidos de Estado (Pills) -->
+      <div class="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-100">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider mr-2">Estado:</span>
+        
+        <button type="button" (click)="statusFilter.set('TODOS')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                [ngClass]="statusFilter() === 'TODOS' ? 'bg-slate-800 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+          Todos ({{ orders().length }})
+        </button>
+
+        <button type="button" (click)="statusFilter.set('REGISTRADA')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                [ngClass]="(statusFilter() === 'REGISTRADA' || statusFilter() === 'REGISTERED') ? 'bg-amber-600 text-white shadow-sm' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'">
+          Registradas
+        </button>
+
+        <button type="button" (click)="statusFilter.set('EN_DIAGNOSTICO')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                [ngClass]="(statusFilter() === 'EN_DIAGNOSTICO' || statusFilter() === 'IN_DIAGNOSIS') ? 'bg-cyan-600 text-white shadow-sm' : 'bg-cyan-50 text-cyan-800 hover:bg-cyan-100'">
+          En Diagnóstico
+        </button>
+
+        <button type="button" (click)="statusFilter.set('EN_TALLER')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                [ngClass]="(statusFilter() === 'EN_TALLER' || statusFilter() === 'IN_WORKSHOP') ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-50 text-blue-800 hover:bg-blue-100'">
+          En Taller
+        </button>
+
+        <button type="button" (click)="statusFilter.set('EN_CONTROL_CALIDAD')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                [ngClass]="(statusFilter() === 'EN_CONTROL_CALIDAD' || statusFilter() === 'QUALITY_CONTROL') ? 'bg-purple-600 text-white shadow-sm' : 'bg-purple-50 text-purple-800 hover:bg-purple-100'">
+          Control de Calidad
+        </button>
+
+        <button type="button" (click)="statusFilter.set('FINALIZADA')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                [ngClass]="(statusFilter() === 'FINALIZADA' || statusFilter() === 'COMPLETED') ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'">
+          Altas / Completadas
+        </button>
+
+        <button type="button" (click)="statusFilter.set('CANCELADA')"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                [ngClass]="(statusFilter() === 'CANCELADA' || statusFilter() === 'CANCELLED') ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-50 text-rose-800 hover:bg-rose-100'">
+          Canceladas
+        </button>
+      </div>
+    </section>
+
+    <!-- TABLA DE ÓRDENES -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      
+      @if (loading()) {
+        <div class="py-20 flex flex-col items-center justify-center text-slate-500">
+          <svg class="animate-spin h-8 w-8 text-amber-600 mb-3" viewBox="0 0 24 24" fill="none">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <p class="text-sm font-semibold">Cargando órdenes de mantenimiento...</p>
+        </div>
+      } @else if (filteredOrders().length === 0) {
+        <div class="py-16 text-center text-slate-400">
+          <svg class="w-16 h-16 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <p class="text-base font-bold text-slate-700 mb-1">No se encontraron órdenes de mantenimiento</p>
+          <p class="text-xs text-slate-400">Intenta con otros filtros o registra una nueva orden</p>
+        </div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="bg-slate-50/80 border-b border-slate-200 text-xs font-extrabold text-slate-600 uppercase tracking-wider">
+                <th class="py-3.5 px-4">Código / Prioridad</th>
+                <th class="py-3.5 px-4">Vehículo</th>
+                <th class="py-3.5 px-4">Tipo & Motivo</th>
+                <th class="py-3.5 px-4">Odómetro</th>
+                <th class="py-3.5 px-4">Estado del Flujo</th>
+                <th class="py-3.5 px-4">Fecha Ingreso</th>
+                <th class="py-3.5 px-4 text-right">Acciones Operativas</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (order of filteredOrders(); track order.id) {
+                <tr class="hover:bg-amber-50/40 transition">
+                  
+                  <!-- Código & Prioridad -->
+                  <td class="py-3 px-4">
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-slate-900 font-mono text-sm">{{ order.orderCode }}</span>
+                      <span class="px-2 py-0.5 rounded-md text-[10px] uppercase font-bold"
+                            [ngClass]="getPriorityBadgeClass(order.priority)">
+                        {{ getPriorityLabel(order.priority) }}
+                      </span>
+                    </div>
+                  </td>
+
+                  <!-- Vehículo -->
+                  <td class="py-3 px-4">
+                    <div class="flex items-center gap-2">
+                      <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M8 17a2 2 0 100-4 2 2 0 000 4zM16 17a2 2 0 100-4 2 2 0 000 4z"/>
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M3 9l2-4h14l2 4M3 9h18v7a1 1 0 01-1 1H4a1 1 0 01-1-1V9z"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p class="font-black text-slate-900 tracking-wide font-mono">{{ order.resourcePlate || 'S/P' }}</p>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Tipo & Motivo -->
+                  <td class="py-3 px-4 max-w-xs">
+                    <p class="text-xs font-bold text-amber-700 uppercase">{{ getMaintenanceTypeLabel(order.maintenanceType) }}</p>
+                    <p class="text-xs text-slate-700 truncate" [title]="order.failureReason">{{ order.failureReason }}</p>
+                  </td>
+
+                  <!-- Odómetro -->
+                  <td class="py-3 px-4">
+                    <span class="text-xs font-semibold text-slate-600 font-mono">
+                      {{ order.reportedMileage ? (order.reportedMileage | number) + ' km' : '—' }}
+                    </span>
+                  </td>
+
+                  <!-- Estado del Flujo -->
+                  <td class="py-3 px-4">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
+                          [ngClass]="getStatusBadgeClass(order.orderStatus)">
+                      <span class="w-2 h-2 rounded-full"
+                            [ngClass]="{
+                              'bg-amber-500': order.orderStatus === 'REGISTRADA' || order.orderStatus === 'REGISTERED',
+                              'bg-cyan-500 animate-pulse': order.orderStatus === 'EN_DIAGNOSTICO' || order.orderStatus === 'IN_DIAGNOSIS',
+                              'bg-blue-600 animate-pulse': order.orderStatus === 'EN_TALLER' || order.orderStatus === 'IN_WORKSHOP',
+                              'bg-purple-600': order.orderStatus === 'EN_CONTROL_CALIDAD' || order.orderStatus === 'QUALITY_CONTROL',
+                              'bg-emerald-600': order.orderStatus === 'FINALIZADA' || order.orderStatus === 'COMPLETED',
+                              'bg-rose-600': order.orderStatus === 'CANCELADA' || order.orderStatus === 'CANCELLED'
+                            }"></span>
+                      {{ getStatusLabel(order.orderStatus) }}
+                    </span>
+                  </td>
+
+                  <!-- Fecha -->
+                  <td class="py-3 px-4 text-xs text-slate-500">
+                    {{ formatDate(order.createdAt) }}
+                  </td>
+
+                  <!-- Acciones Operativas según Máquina de Estados -->
+                  <td class="py-3 px-4 text-right">
+                    <div class="inline-flex items-center justify-end gap-1.5">
+
+                      <!-- Ver Detalle -->
+                      <button type="button"
+                              (click)="viewDetail(order)"
+                              title="Ver ficha técnica"
+                              aria-label="Ver ficha técnica de la orden"
+                              class="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                      </button>
+
+                      <!-- Transición 1: Si REGISTRADA -> Asignar Taller -->
+                      @if (order.orderStatus === 'REGISTRADA' || order.orderStatus === 'REGISTERED') {
+                        <button type="button"
+                                (click)="openAssignModal(order)"
+                                title="Asignar taller mecánico"
+                                aria-label="Asignar taller mecánico"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition cursor-pointer">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                          </svg>
+                          <span>Taller</span>
+                        </button>
+                      }
+
+                      <!-- Transición 2: Si EN_DIAGNOSTICO -> Iniciar Reparación -->
+                      @if (order.orderStatus === 'EN_DIAGNOSTICO' || order.orderStatus === 'IN_DIAGNOSIS') {
+                        <button type="button"
+                                (click)="startRepair(order)"
+                                title="Iniciar trabajos en taller"
+                                aria-label="Iniciar trabajos en taller"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition cursor-pointer">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          </svg>
+                          <span>Reparar</span>
+                        </button>
+                      }
+
+                      <!-- Transición 3: Si EN_TALLER -> Pasar a Control de Calidad -->
+                      @if (order.orderStatus === 'EN_TALLER' || order.orderStatus === 'IN_WORKSHOP') {
+                        <button type="button"
+                                (click)="passToQualityControl(order)"
+                                title="Enviar a control de calidad y pruebas"
+                                aria-label="Enviar a control de calidad y pruebas"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm transition cursor-pointer">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          </svg>
+                          <span>A Calidad</span>
+                        </button>
+                      }
+
+                      <!-- Transición 4: Si EN_CONTROL_CALIDAD -> Emitir Alta Técnica -->
+                      @if (order.orderStatus === 'EN_CONTROL_CALIDAD' || order.orderStatus === 'QUALITY_CONTROL') {
+                        <button type="button"
+                                (click)="openDischargeModal(order)"
+                                title="Emitir acta de alta técnica"
+                                aria-label="Emitir acta de alta técnica"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition cursor-pointer">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                          </svg>
+                          <span>Alta Técnica</span>
+                        </button>
+                      }
+
+                      <!-- Editar Datos de Cabecera (solo si no está finalizada o cancelada) -->
+                      @if (order.orderStatus !== 'FINALIZADA' && order.orderStatus !== 'COMPLETED' && order.orderStatus !== 'CANCELADA' && order.orderStatus !== 'CANCELLED') {
+                        <button type="button"
+                                (click)="openEditModal(order)"
+                                title="Editar datos (avería, prioridad, odómetro, taller, notas)"
+                                aria-label="Editar datos de la orden"
+                                class="p-1.5 rounded-lg text-slate-600 hover:bg-amber-50 hover:text-amber-600 transition cursor-pointer">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
+                          </svg>
+                        </button>
+                      }
+
+                      <!-- Cancelar (solo si está activo y no completado/cancelado) -->
+                      @if (order.orderStatus !== 'FINALIZADA' && order.orderStatus !== 'COMPLETED' && order.orderStatus !== 'CANCELADA' && order.orderStatus !== 'CANCELLED') {
+                        <button type="button"
+                                (click)="openCancelModal(order)"
+                                title="Cancelar orden"
+                                aria-label="Cancelar orden de mantenimiento"
+                                class="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      }
+
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: REGISTRAR NUEVA ORDEN                                            -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  @if (isCreateModalOpen()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+        
+        <div class="flex items-center justify-between p-5 border-b border-slate-100">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white font-bold">
+              +
+            </div>
+            <div>
+              <h2 class="text-lg font-extrabold text-slate-900">Registrar Orden de Mantenimiento</h2>
+              <p class="text-xs text-slate-500">El vehículo pasará a estado EN MANTENIMIENTO automáticamente</p>
+            </div>
+          </div>
+          <button type="button" (click)="closeCreateModal()" aria-label="Cerrar modal" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg cursor-pointer">✕</button>
+        </div>
+
+        <form (ngSubmit)="submitCreate()" class="p-6 space-y-4">
+          
+          <!-- Recurso Vehicular -->
+          <div>
+            <label for="create-resource-id" class="block text-xs font-bold text-slate-700 uppercase mb-1">Recurso Vehicular *</label>
+            <select id="create-resource-id"
+                    [ngModel]="createForm.resourceId"
+                    (ngModelChange)="createForm.resourceId = $event; onResourceChange($event)"
+                    name="resourceId"
+                    required
+                    [ngClass]="hasCreateFormSubmitted() && !createForm.resourceId ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-amber-500'"
+                    class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition">
+              <option value="" disabled selected>Seleccione un vehículo institucional</option>
+              @for (r of availableResourcesForMaintenance(); track r.id) {
+                <option [value]="r.id">
+                  {{ r.internalCode || r.identificador }} - {{ r.responsible || r.encargadoNombre || 'Sin encargado' }} ({{ r.availability || r.estadoDisponibilidad || 'DISPONIBLE' }})
+                </option>
+              }
+              @if (availableResourcesForMaintenance().length === 0) {
+                <option value="" disabled>Todos los vehículos tienen órdenes activas o no hay recursos disponibles</option>
+              }
+            </select>
+            @if (hasCreateFormSubmitted() && !createForm.resourceId) {
+              <p class="text-xs text-rose-600 font-semibold mt-1">Debe seleccionar un recurso vehicular institucional.</p>
+            }
+          </div>
+
+          <!-- Tipo y Prioridad -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Tipo de Mantenimiento *</label>
+              <select [(ngModel)]="createForm.maintenanceType" name="maintenanceType" required
+                      class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-amber-500">
+                <option value="CORRECTIVO">Correctivo (Avería Mecánica)</option>
+                <option value="PREVENTIVO">Preventivo (Programado)</option>
+                <option value="CORRECTIVO_ACCIDENTE">Por Siniestro / Accidente</option>
+                <option value="INSPECCION_REGLAMENTARIA">Revisión Técnica Anual</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nivel de Prioridad *</label>
+              <select [(ngModel)]="createForm.priority" name="priority" required
+                      class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-amber-500">
+                <option value="BAJA">Baja</option>
+                <option value="MEDIA">Media</option>
+                <option value="ALTA">Alta</option>
+                <option value="CRITICA">Crítica (Unidad Clave)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Odómetro & ID Incidente -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="create-reported-mileage" class="block text-xs font-bold text-slate-700 uppercase mb-1">Kilometraje Odómetro</label>
+              <input id="create-reported-mileage"
+                     type="number"
+                     [(ngModel)]="createForm.reportedMileage"
+                     name="reportedMileage"
+                     min="0"
+                     placeholder="Ej. 85000"
+                     [ngClass]="isMileageInvalid(createForm.reportedMileage) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-amber-500'"
+                     class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition" />
+              @if (isMileageInvalid(createForm.reportedMileage)) {
+                <p class="text-xs text-rose-600 font-semibold mt-1">El kilometraje odómetro no puede ser negativo.</p>
+              }
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">ID Incidente (Opcional)</label>
+              <input type="text" [(ngModel)]="createForm.incidentId" name="incidentId" placeholder="Ej. INC-2026-004"
+                     class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-amber-500" />
+            </div>
+          </div>
+
+          <!-- Motivo de avería -->
+          <div>
+            <label for="create-failure-reason" class="block text-xs font-bold text-slate-700 uppercase mb-1">Motivo de Avería o Requerimiento *</label>
+            <textarea id="create-failure-reason"
+                      [(ngModel)]="createForm.failureReason"
+                      name="failureReason"
+                      rows="3"
+                      required
+                      minlength="5"
+                      maxlength="500"
+                      placeholder="Describa la falla mecánica, síntomas observados o requerimiento preventivo..."
+                      [ngClass]="hasCreateFormSubmitted() && isFailureReasonInvalid(createForm.failureReason) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-amber-500'"
+                      class="w-full p-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition"></textarea>
+            <div class="flex items-center justify-between mt-1 text-[11px] text-slate-400">
+              @if (hasCreateFormSubmitted() && isFailureReasonInvalid(createForm.failureReason)) {
+                <span class="text-rose-600 font-semibold">El motivo debe tener entre 5 y 500 caracteres.</span>
+              } @else {
+                <span>Mínimo 5 caracteres requeridos.</span>
+              }
+              <span>{{ (createForm.failureReason || '').length }}/500</span>
+            </div>
+          </div>
+
+          <!-- Botones -->
+          <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <button type="button" (click)="closeCreateModal()"
+                    class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-100 transition">
+              Cancelar
+            </button>
+            <button type="submit" [disabled]="submitting()"
+                    class="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm shadow-md transition disabled:opacity-50">
+              {{ submitting() ? 'Registrando...' : 'Confirmar Orden' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: ASIGNAR TALLER (REGISTERED -> IN_DIAGNOSIS)                      -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  @if (isAssignModalOpen()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        
+        <div class="flex items-center justify-between p-5 border-b border-slate-100">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-cyan-600 flex items-center justify-center text-white font-bold">
+              🛠️
+            </div>
+            <div>
+              <h2 class="text-lg font-extrabold text-slate-900">Asignar Taller Mecánico</h2>
+              <p class="text-xs text-slate-500">Orden {{ currentOrderCodeForAssign() }} ➔ Estado EN DIAGNÓSTICO</p>
+            </div>
+          </div>
+          <button type="button" (click)="closeAssignModal()" aria-label="Cerrar modal" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg cursor-pointer">✕</button>
+        </div>
+
+        <form (ngSubmit)="submitAssignWorkshop()" class="p-6 space-y-4">
+          
+          <div>
+            <label for="assign-workshop-name" class="block text-xs font-bold text-slate-700 uppercase mb-1">Nombre o Razón Social del Taller *</label>
+            <input id="assign-workshop-name"
+                   type="text"
+                   [(ngModel)]="assignForm.workshopName"
+                   name="workshopName"
+                   required
+                   placeholder="Ej. Taller Central Cañete S.A.C."
+                   [ngClass]="hasAssignFormSubmitted() && isWorkshopNameInvalid(assignForm.workshopName) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-cyan-500'"
+                   class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition" />
+            @if (hasAssignFormSubmitted() && isWorkshopNameInvalid(assignForm.workshopName)) {
+              <p class="text-xs text-rose-600 font-semibold mt-1">El nombre del taller es obligatorio (mínimo 3 caracteres).</p>
+            }
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="assign-workshop-ruc" class="block text-xs font-bold text-slate-700 uppercase mb-1">RUC del Taller (11 dígitos)</label>
+              <input id="assign-workshop-ruc" type="text" [(ngModel)]="assignForm.workshopRuc" name="workshopRuc" maxlength="11" placeholder="Ej. 20601234567"
+                     [attr.aria-invalid]="isRucInvalid(assignForm.workshopRuc)"
+                     [attr.aria-describedby]="isRucInvalid(assignForm.workshopRuc) ? 'assign-ruc-error' : null"
+                     [ngClass]="isRucInvalid(assignForm.workshopRuc) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-cyan-500'"
+                     class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition" />
+              @if (isRucInvalid(assignForm.workshopRuc)) {
+                <p id="assign-ruc-error" role="alert" aria-live="polite" class="text-xs text-rose-600 font-semibold mt-1">El RUC debe tener exactamente 11 dígitos numéricos.</p>
+              }
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Mecánico Responsable</label>
+              <input type="text" [(ngModel)]="assignForm.mechanicInCharge" name="mechanicInCharge" placeholder="Ej. Ing. Roberto Gálvez"
+                     class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 focus:bg-white" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="assign-contact-phone" class="block text-xs font-bold text-slate-700 uppercase mb-1">Teléfono Contacto</label>
+              <input id="assign-contact-phone" type="text" [(ngModel)]="assignForm.contactPhone" name="contactPhone" maxlength="9" placeholder="Ej. 987654321"
+                     [attr.aria-invalid]="isPhoneInvalid(assignForm.contactPhone)"
+                     [attr.aria-describedby]="isPhoneInvalid(assignForm.contactPhone) ? 'assign-phone-error' : null"
+                     [ngClass]="isPhoneInvalid(assignForm.contactPhone) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-cyan-500'"
+                     class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition" />
+              @if (isPhoneInvalid(assignForm.contactPhone)) {
+                <p id="assign-phone-error" role="alert" aria-live="polite" class="text-xs text-rose-600 font-semibold mt-1">El teléfono debe tener 9 dígitos numéricos.</p>
+              }
+            </div>
+
+            <div>
+              <label for="assign-estimated-cost" class="block text-xs font-bold text-slate-700 uppercase mb-1">Presupuesto Estimado (S/.)</label>
+              <input id="assign-estimated-cost"
+                     type="number"
+                     [(ngModel)]="assignForm.estimatedCost"
+                     name="estimatedCost"
+                     min="0"
+                     step="0.5"
+                     placeholder="Ej. 1200.00"
+                     [ngClass]="isCostInvalid(assignForm.estimatedCost) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-cyan-500'"
+                     class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition" />
+              @if (isCostInvalid(assignForm.estimatedCost)) {
+                <p class="text-xs text-rose-600 font-semibold mt-1">El presupuesto estimado no puede ser negativo.</p>
+              }
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Dirección del Taller</label>
+            <input type="text" [(ngModel)]="assignForm.workshopAddress" name="workshopAddress" placeholder="Ej. Av. Mariscal Benavides 450, San Vicente"
+                   class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-cyan-500" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Diagnóstico Inicial / Trabajos a Realizar</label>
+            <textarea [(ngModel)]="assignForm.initialDiagnosis" name="initialDiagnosis" rows="2"
+                      placeholder="Diagnóstico preliminar o tareas requeridas en taller..."
+                      class="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-cyan-500"></textarea>
+          </div>
+
+          <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <button type="button" (click)="closeAssignModal()"
+                    class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-100 transition">
+              Cancelar
+            </button>
+            <button type="submit" [disabled]="submitting()"
+                    class="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-sm shadow-md transition disabled:opacity-50">
+              {{ submitting() ? 'Guardando...' : 'Asignar Taller' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: ALTA TÉCNICA (QUALITY_CONTROL -> COMPLETED)                      -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  @if (isDischargeModalOpen()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        
+        <div class="flex items-center justify-between p-5 border-b border-slate-100">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold">
+              ✓
+            </div>
+            <div>
+              <h2 class="text-lg font-extrabold text-slate-900">Emisión de Alta Técnica</h2>
+              <p class="text-xs text-slate-500">Orden {{ currentOrderCodeForDischarge() }} ➔ El vehículo volverá a estar DISPONIBLE</p>
+            </div>
+          </div>
+          <button type="button" (click)="closeDischargeModal()" aria-label="Cerrar modal" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg cursor-pointer">✕</button>
+        </div>
+
+        <form (ngSubmit)="submitTechnicalDischarge()" class="p-6 space-y-4">
+          
+          <div>
+            <label for="discharge-verdict" class="block text-xs font-bold text-slate-700 uppercase mb-1">Dictamen Técnico de Conformidad *</label>
+            <textarea id="discharge-verdict"
+                      [(ngModel)]="dischargeForm.technicalVerdict"
+                      name="technicalVerdict"
+                      rows="3"
+                      required
+                      placeholder="Dictamen del perito mecánico (ej. Vehículo probado en ruta; sistema de frenos y suspensión al 100% operativo)..."
+                      [ngClass]="hasDischargeFormSubmitted() && isTechnicalVerdictInvalid(dischargeForm.technicalVerdict) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-emerald-500'"
+                      class="w-full p-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition"></textarea>
+            @if (hasDischargeFormSubmitted() && isTechnicalVerdictInvalid(dischargeForm.technicalVerdict)) {
+              <p class="text-xs text-rose-600 font-semibold mt-1">El dictamen técnico debe tener al menos 5 caracteres.</p>
+            }
+          </div>
+
+          <div>
+            <label for="discharge-tests" class="block text-xs font-bold text-slate-700 uppercase mb-1">Pruebas Mecánicas Realizadas</label>
+            <textarea id="discharge-tests"
+                      [(ngModel)]="dischargeForm.testsPerformed"
+                      name="testsPerformed"
+                      rows="2"
+                      placeholder="Pruebas efectuadas antes de la entrega (ej. Prueba de frenado a 60 km/h, chequeo de alineamiento)..."
+                      class="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="discharge-exit-mileage" class="block text-xs font-bold text-slate-700 uppercase mb-1">Kilometraje de Salida *</label>
+              <input id="discharge-exit-mileage"
+                     type="number"
+                     [(ngModel)]="dischargeForm.exitMileage"
+                     name="exitMileage"
+                     required
+                     min="0"
+                     placeholder="Ej. 85500"
+                     [ngClass]="hasDischargeFormSubmitted() && isMileageInvalid(dischargeForm.exitMileage) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-emerald-500'"
+                     class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition" />
+              @if (hasDischargeFormSubmitted() && isMileageInvalid(dischargeForm.exitMileage)) {
+                <p class="text-xs text-rose-600 font-semibold mt-1">El kilometraje de salida debe ser mayor o igual a 0.</p>
+              }
+            </div>
+
+            <div>
+              <label for="discharge-final-cost" class="block text-xs font-bold text-slate-700 uppercase mb-1">Costo Final Facturado (S/.)</label>
+              <input id="discharge-final-cost"
+                     type="number"
+                     [(ngModel)]="dischargeForm.finalCost"
+                     name="finalCost"
+                     min="0"
+                     step="0.5"
+                     placeholder="Ej. 1150.00"
+                     [ngClass]="isCostInvalid(dischargeForm.finalCost) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-emerald-500'"
+                     class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition" />
+              @if (isCostInvalid(dischargeForm.finalCost)) {
+                <p class="text-xs text-rose-600 font-semibold mt-1">El costo final facturado no puede ser negativo.</p>
+              }
+            </div>
+          </div>
+
+          <div>
+            <label for="discharge-media-url" class="block text-xs font-bold text-slate-700 uppercase mb-1">URL Acta de Entrega / Factura (Opcional)</label>
+            <input id="discharge-media-url"
+                   type="url"
+                   [(ngModel)]="dischargeForm.mediaUrl"
+                   name="mediaUrl"
+                   placeholder="https://res.cloudinary.com/.../acta.pdf"
+                   [ngClass]="isUrlInvalid(dischargeForm.mediaUrl) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-emerald-500'"
+                   class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition" />
+            @if (isUrlInvalid(dischargeForm.mediaUrl)) {
+              <p class="text-xs text-rose-600 font-semibold mt-1">Ingrese una URL válida (debe iniciar con http:// o https://).</p>
+            }
+          </div>
+
+          <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <button type="button" (click)="closeDischargeModal()"
+                    class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-100 transition">
+              Cancelar
+            </button>
+            <button type="submit" [disabled]="submitting()"
+                    class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition disabled:opacity-50">
+              {{ submitting() ? 'Procesando...' : 'Aprobar y Liberar Vehículo' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: CANCELAR ORDEN                                                   -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  @if (isCancelModalOpen()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md">
+        
+        <div class="flex items-center justify-between p-5 border-b border-slate-100">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-rose-600 flex items-center justify-center text-white font-bold">
+              ✕
+            </div>
+            <div>
+              <h2 class="text-lg font-extrabold text-slate-900">Cancelar Orden</h2>
+              <p class="text-xs text-slate-500">Orden {{ currentOrderCodeForCancel() }}</p>
+            </div>
+          </div>
+          <button type="button" (click)="closeCancelModal()" aria-label="Cerrar modal" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg cursor-pointer">✕</button>
+        </div>
+
+        <form (ngSubmit)="submitCancel()" class="p-6 space-y-4">
+          <p class="text-xs text-slate-600">
+            Al cancelar la orden de mantenimiento, el vehículo volverá a estar disponible para su entidad. Por favor ingrese el motivo justificado:
+          </p>
+
+          <div>
+            <label for="cancel-reason" class="block text-xs font-bold text-slate-700 uppercase mb-1">Motivo de Cancelación *</label>
+            <textarea id="cancel-reason"
+                      [(ngModel)]="cancelForm.reason"
+                      name="reason"
+                      rows="3"
+                      required
+                      placeholder="Indique el motivo por el cual se anula la intervención..."
+                      [ngClass]="hasCancelFormSubmitted() && isCancelReasonInvalid(cancelForm.reason) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-rose-500'"
+                      class="w-full p-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition"></textarea>
+            @if (hasCancelFormSubmitted() && isCancelReasonInvalid(cancelForm.reason)) {
+              <p class="text-xs text-rose-600 font-semibold mt-1">El motivo de cancelación debe tener al menos 5 caracteres.</p>
+            }
+          </div>
+
+          <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <button type="button" (click)="closeCancelModal()"
+                    class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-100 transition">
+              Volver
+            </button>
+            <button type="submit" [disabled]="submitting()"
+                    class="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-md transition disabled:opacity-50">
+              {{ submitting() ? 'Cancelando...' : 'Confirmar Cancelación' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: FICHA TÉCNICA Y LÍNEA DE TIEMPO DEL CICLO DE VIDA                -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  @if (isDetailModalOpen()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        
+        <div class="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+          <div>
+            <span class="text-xs font-extrabold text-amber-700 uppercase tracking-wider">Ficha Técnica Operativa</span>
+            <h2 class="text-xl font-black text-slate-900 font-mono">{{ selectedOrderDetail()?.orderCode }}</h2>
+          </div>
+          <button type="button" (click)="closeDetailModal()" aria-label="Cerrar modal" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg text-lg cursor-pointer">✕</button>
+        </div>
+
+        @if (loadingDetail()) {
+          <div class="p-16 text-center text-slate-500">
+            <svg class="animate-spin h-8 w-8 text-amber-600 mx-auto mb-3" viewBox="0 0 24 24" fill="none">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            <p class="text-sm font-semibold">Cargando expediente...</p>
+          </div>
+        } @else if (selectedOrderDetail(); as d) {
+          <div class="p-6 space-y-6">
+
+            <!-- Estado & Vehículo Info -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase">Estado</p>
+                <p class="text-xs font-black text-slate-800">{{ getStatusLabel(d.orderStatus) }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase">Placa</p>
+                <p class="text-xs font-black text-slate-800 font-mono">{{ d.resourcePlate }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase">Prioridad</p>
+                <p class="text-xs font-black text-slate-800">{{ getPriorityLabel(d.priority) }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase">Kilometraje Ingreso</p>
+                <p class="text-xs font-black text-slate-800">{{ d.reportedMileage ? (d.reportedMileage | number) + ' km' : '—' }}</p>
+              </div>
+            </div>
+
+            <!-- Falla reportada -->
+            <div>
+              <h3 class="text-xs font-extrabold text-slate-700 uppercase mb-1">Motivo de Avería / Requerimiento</h3>
+              <p class="text-sm text-slate-800 bg-slate-50 p-3.5 rounded-xl border border-slate-200">{{ d.failureReason }}</p>
+            </div>
+
+            <!-- Datos del Taller (si existen) -->
+            @if (d.workshopDetail) {
+              <div class="p-4 rounded-xl bg-cyan-50/60 border border-cyan-200 space-y-2">
+                <h3 class="text-xs font-extrabold text-cyan-900 uppercase flex items-center gap-2">
+                  <span>🛠️ Taller Mecánico Asignado</span>
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <p><span class="font-bold text-slate-600">Taller:</span> {{ d.workshopDetail.workshopName }}</p>
+                  <p><span class="font-bold text-slate-600">RUC:</span> {{ d.workshopDetail.workshopRuc || '—' }}</p>
+                  <p><span class="font-bold text-slate-600">Mecánico:</span> {{ d.workshopDetail.mechanicInCharge || '—' }}</p>
+                  <p><span class="font-bold text-slate-600">Teléfono:</span> {{ d.workshopDetail.contactPhone || '—' }}</p>
+                  <p><span class="font-bold text-slate-600">Presupuesto Inicial:</span> {{ d.workshopDetail.estimatedCost ? 'S/. ' + d.workshopDetail.estimatedCost : '—' }}</p>
+                  <p><span class="font-bold text-slate-600">Entrega Estimada:</span> {{ formatDate(d.workshopDetail.estimatedDeliveryDate) }}</p>
+                </div>
+                @if (d.workshopDetail.initialDiagnosis) {
+                  <p class="text-xs text-slate-700 pt-1 border-t border-cyan-100">
+                    <span class="font-bold">Diagnóstico preliminar:</span> {{ d.workshopDetail.initialDiagnosis }}
+                  </p>
+                }
+              </div>
+            }
+
+            <!-- Datos de Alta Técnica (si existen) -->
+            @if (d.technicalDischargeReport) {
+              <div class="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-2">
+                <h3 class="text-xs font-extrabold text-emerald-900 uppercase flex items-center gap-2">
+                  <span>✓ Acta de Alta Técnica y Conformidad</span>
+                </h3>
+                <div class="text-xs space-y-1">
+                  <p><span class="font-bold text-slate-600">Dictamen Técnico:</span> {{ d.technicalDischargeReport.technicalVerdict }}</p>
+                  <p><span class="font-bold text-slate-600">Pruebas Efectuadas:</span> {{ d.technicalDischargeReport.testsPerformed || '—' }}</p>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <p><span class="font-bold text-slate-600">Odómetro de Salida:</span> {{ (d.technicalDischargeReport.exitMileage | number) }} km</p>
+                    <p><span class="font-bold text-slate-600">Costo Final Facturado:</span> S/. {{ d.workshopDetail?.finalCost || 0 }}</p>
+                    <p><span class="font-bold text-slate-600">Fecha de Alta:</span> {{ formatDate(d.technicalDischargeReport.dischargeDate) }}</p>
+                    <p><span class="font-bold text-slate-600">Aprobado por DNI:</span> {{ d.technicalDischargeReport.approvedByDni || '—' }}</p>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- Observaciones / Bitácora -->
+            @if (d.remarks) {
+              <div>
+                <h3 class="text-xs font-extrabold text-slate-700 uppercase mb-1">Bitácora / Observaciones</h3>
+                <p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 font-mono">{{ d.remarks }}</p>
+              </div>
+            }
+
+            <div class="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
+              <p>Registrado: {{ formatDate(d.createdAt) }}</p>
+              <p>Actualizado: {{ formatDate(d.updatedAt) }}</p>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: EDITAR DATOS DE LA ORDEN                                         -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  @if (isEditModalOpen()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+        
+        <div class="flex items-center justify-between p-5 border-b border-slate-100">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 font-bold">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-lg font-extrabold text-slate-900">Editar Datos de la Orden</h2>
+              <p class="text-xs text-slate-500 font-mono">{{ currentOrderCodeForEdit() }} • Vehículo {{ currentOrderPlateForEdit() }}</p>
+            </div>
+          </div>
+          <button type="button" (click)="closeEditModal()" aria-label="Cerrar modal" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg cursor-pointer">✕</button>
+        </div>
+
+        <form (ngSubmit)="submitEdit()" class="p-6 space-y-4">
+          
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+            <div>
+              <span class="text-slate-500 font-semibold">Estado actual:</span>
+              <span class="ml-1 font-bold text-slate-800">{{ currentOrderStatusForEdit() }}</span>
+            </div>
+            <span class="text-slate-400 text-[11px]">Placa: <b class="text-slate-700 font-mono">{{ currentOrderPlateForEdit() }}</b></span>
+          </div>
+
+          <!-- CASO 1: ORDEN EN ETAPA DE REGISTRO (REGISTRADA) -->
+          @if (isRegisteredStage()) {
+            <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+              <span class="text-base shrink-0">📝</span>
+              <div>
+                <p class="font-bold">Etapa de Registro Inicial (Orden Pendiente de Taller)</p>
+                <p class="text-[11px] text-amber-700 mt-0.5">Puedes corregir la prioridad, el motivo de avería o el odómetro ingresado si hubo alguna confusión.</p>
+              </div>
+            </div>
+
+            <!-- Motivo de avería -->
+            <div>
+              <label for="edit-failure-reason" class="block text-xs font-bold text-slate-700 uppercase mb-1">Motivo o Diagnóstico de Avería *</label>
+              <textarea id="edit-failure-reason"
+                        [(ngModel)]="editForm.failureReason"
+                        name="failureReason"
+                        required
+                        minlength="5"
+                        maxlength="500"
+                        rows="3"
+                        placeholder="Describa la falla reportada o hallazgos..."
+                        [ngClass]="hasEditFormSubmitted() && isFailureReasonInvalid(editForm.failureReason) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-amber-500'"
+                        class="w-full p-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition"></textarea>
+              <div class="flex items-center justify-between mt-1 text-[11px] text-slate-400">
+                @if (hasEditFormSubmitted() && isFailureReasonInvalid(editForm.failureReason)) {
+                  <span class="text-rose-600 font-semibold">El motivo debe tener entre 5 y 500 caracteres.</span>
+                } @else {
+                  <span>Mínimo 5 caracteres requeridos.</span>
+                }
+                <span>{{ (editForm.failureReason || '').length }}/500</span>
+              </div>
+            </div>
+
+            <!-- Prioridad y Kilometraje -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Prioridad Operativa *</label>
+                <select [(ngModel)]="editForm.priority"
+                        name="priority"
+                        class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white">
+                  <option value="BAJA">Baja</option>
+                  <option value="MEDIA">Media</option>
+                  <option value="ALTA">Alta</option>
+                  <option value="CRITICA">Crítica</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="edit-reported-mileage" class="block text-xs font-bold text-slate-700 uppercase mb-1">Kilometraje al Reporte</label>
+                <input id="edit-reported-mileage"
+                       type="number"
+                       [(ngModel)]="editForm.reportedMileage"
+                       name="reportedMileage"
+                       min="0"
+                       [ngClass]="isMileageInvalid(editForm.reportedMileage) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-amber-500'"
+                       class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition">
+                @if (isMileageInvalid(editForm.reportedMileage)) {
+                  <p class="text-xs text-rose-600 font-semibold mt-1">El kilometraje al reporte no puede ser negativo.</p>
+                }
+              </div>
+            </div>
+
+            <!-- ID Incidente Asociado -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">ID Incidente Asociado (Opcional)</label>
+              <input type="text"
+                     [(ngModel)]="editForm.incidentId"
+                     name="incidentId"
+                     placeholder="Ej: INC-2026-0001 (si provino de un siniestro)"
+                     class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white">
+            </div>
+
+            <!-- Observaciones adicionales -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Observaciones / Notas Adicionales</label>
+              <textarea [(ngModel)]="editForm.remarks"
+                        name="remarks"
+                        rows="2"
+                        placeholder="Información adicional relevante..."
+                        class="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-amber-500 focus:bg-white"></textarea>
+            </div>
+          } @else {
+            <!-- CASO 2: ORDEN EN DIAGNÓSTICO / TALLER / CONTROL CALIDAD (DATOS DE INGRESO CONGELADOS, TALLER EDITABLE) -->
+            
+            <!-- Resumen de Registro Inicial Bloqueado -->
+            <div class="p-4 bg-slate-100/80 rounded-xl border border-slate-200 space-y-2 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>🔒</span> Registro Inicial (Bloqueado por avance operativo)
+                </span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" [ngClass]="getPriorityBadgeClass(editForm.priority)">
+                  Prioridad {{ getPriorityLabel(editForm.priority) }}
+                </span>
+              </div>
+              <p class="text-slate-800 font-medium"><b class="text-slate-600 font-semibold">Motivo de Avería:</b> {{ editForm.failureReason }}</p>
+              <div class="flex items-center gap-4 text-slate-500 text-[11px]">
+                <span>Odómetro al ingreso: <b class="text-slate-700 font-mono">{{ editForm.reportedMileage ? (editForm.reportedMileage | number) + ' km' : '—' }}</b></span>
+                @if (editForm.incidentId) {
+                  <span>Incidente: <b class="text-slate-700 font-mono">{{ editForm.incidentId }}</b></span>
+                }
+              </div>
+            </div>
+
+            <div class="p-3 bg-cyan-50 rounded-xl border border-cyan-200 text-xs text-cyan-900 flex items-start gap-2">
+              <span class="text-base shrink-0">🛠️</span>
+              <div>
+                <p class="font-bold">Datos del Taller y Diagnóstico Técnico (Modo Edición / Corrección)</p>
+                <p class="text-[11px] text-cyan-700 mt-0.5">Los campos están precargados con la información actual. Puedes corregir el mecánico, presupuesto, teléfono, dirección o diagnóstico.</p>
+              </div>
+            </div>
+
+            @if (editForm.workshopDetail) {
+              <div>
+                <label for="edit-workshop-name" class="block text-xs font-bold text-slate-700 uppercase mb-1">Nombre o Razón Social del Taller *</label>
+                <input id="edit-workshop-name"
+                       type="text"
+                       [(ngModel)]="editForm.workshopDetail.workshopName"
+                       name="editWorkshopName"
+                       required
+                       placeholder="Ej. Taller Central Cañete S.A.C."
+                       [ngClass]="hasEditFormSubmitted() && isWorkshopNameInvalid(editForm.workshopDetail.workshopName) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-cyan-500'"
+                       class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition" />
+                @if (hasEditFormSubmitted() && isWorkshopNameInvalid(editForm.workshopDetail.workshopName)) {
+                  <p class="text-xs text-rose-600 font-semibold mt-1">El nombre del taller es obligatorio (mínimo 3 caracteres).</p>
+                }
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label for="edit-workshop-ruc" class="block text-xs font-bold text-slate-700 uppercase mb-1">RUC del Taller (11 dígitos)</label>
+                  <input id="edit-workshop-ruc"
+                         type="text"
+                         [(ngModel)]="editForm.workshopDetail.workshopRuc"
+                         name="editWorkshopRuc"
+                         maxlength="11"
+                         placeholder="Ej. 20601234567"
+                         [attr.aria-invalid]="isRucInvalid(editForm.workshopDetail.workshopRuc)"
+                         [attr.aria-describedby]="isRucInvalid(editForm.workshopDetail.workshopRuc) ? 'edit-ruc-error' : null"
+                         [ngClass]="isRucInvalid(editForm.workshopDetail.workshopRuc) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-cyan-500'"
+                         class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition" />
+                  @if (isRucInvalid(editForm.workshopDetail.workshopRuc)) {
+                    <p id="edit-ruc-error" role="alert" aria-live="polite" class="text-xs text-rose-600 font-semibold mt-1">El RUC debe tener exactamente 11 dígitos numéricos.</p>
+                  }
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Mecánico Responsable</label>
+                  <input type="text"
+                         [(ngModel)]="editForm.workshopDetail.mechanicInCharge"
+                         name="editMechanicInCharge"
+                         placeholder="Ej. Ing. Roberto Gálvez"
+                         class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 focus:bg-white" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label for="edit-contact-phone" class="block text-xs font-bold text-slate-700 uppercase mb-1">Teléfono Contacto</label>
+                  <input id="edit-contact-phone"
+                         type="text"
+                         [(ngModel)]="editForm.workshopDetail.contactPhone"
+                         name="editContactPhone"
+                         maxlength="9"
+                         placeholder="Ej. 987654321"
+                         [attr.aria-invalid]="isPhoneInvalid(editForm.workshopDetail.contactPhone)"
+                         [attr.aria-describedby]="isPhoneInvalid(editForm.workshopDetail.contactPhone) ? 'edit-phone-error' : null"
+                         [ngClass]="isPhoneInvalid(editForm.workshopDetail.contactPhone) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-cyan-500'"
+                         class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition" />
+                  @if (isPhoneInvalid(editForm.workshopDetail.contactPhone)) {
+                    <p id="edit-phone-error" role="alert" aria-live="polite" class="text-xs text-rose-600 font-semibold mt-1">El teléfono debe tener 9 dígitos numéricos.</p>
+                  }
+                </div>
+
+                <div>
+                  <label for="edit-estimated-cost" class="block text-xs font-bold text-slate-700 uppercase mb-1">Presupuesto Estimado (S/.)</label>
+                  <input id="edit-estimated-cost"
+                         type="number"
+                         [(ngModel)]="editForm.workshopDetail.estimatedCost"
+                         name="editEstimatedCost"
+                         min="0"
+                         step="0.5"
+                         placeholder="Ej. 1200.00"
+                         [ngClass]="isCostInvalid(editForm.workshopDetail.estimatedCost) ? 'border-rose-400 bg-rose-50/50 focus:ring-rose-400' : 'border-slate-200 bg-slate-50 focus:ring-cyan-500'"
+                         class="w-full h-11 px-3 rounded-xl border text-slate-800 text-sm focus:ring-2 focus:bg-white transition" />
+                  @if (isCostInvalid(editForm.workshopDetail.estimatedCost)) {
+                    <p class="text-xs text-rose-600 font-semibold mt-1">El presupuesto estimado no puede ser negativo.</p>
+                  }
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Dirección del Taller</label>
+                <input type="text"
+                       [(ngModel)]="editForm.workshopDetail.workshopAddress"
+                       name="editWorkshopAddress"
+                       placeholder="Ej. Av. Mariscal Benavides 450, San Vicente"
+                       class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 focus:bg-white" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Diagnóstico Inicial / Tareas en Taller</label>
+                <textarea [(ngModel)]="editForm.workshopDetail.initialDiagnosis"
+                          name="editInitialDiagnosis"
+                          rows="2"
+                          placeholder="Diagnóstico preliminar o tareas requeridas en taller..."
+                          class="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 focus:bg-white"></textarea>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Observaciones / Notas de Taller</label>
+                <textarea [(ngModel)]="editForm.remarks"
+                          name="remarks"
+                          rows="2"
+                          placeholder="Notas adicionales sobre la intervención..."
+                          class="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 focus:bg-white"></textarea>
+              </div>
+            }
+          }
+
+          <!-- Acciones -->
+          <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <button type="button"
+                    (click)="closeEditModal()"
+                    class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition cursor-pointer">
+              Cancelar
+            </button>
+            <button type="submit"
+                    [disabled]="submitting()"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-bold shadow-md shadow-amber-500/20 transition cursor-pointer">
+              @if (submitting()) {
+                <span class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+              }
+              <span>Guardar Cambios</span>
+            </button>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+  }
+
+</div>

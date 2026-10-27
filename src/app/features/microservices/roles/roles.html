@@ -1,0 +1,180 @@
+<div class="civic-page mun-page">
+  <h1 class="mun-sr-only">Roles</h1>
+
+  <section class="mun-shell" aria-label="Roles de la plataforma">
+    <header class="mun-bar">
+      <div class="rol-bar__copy">
+        <p class="mun-bar__title">Roles del sistema</p>
+        @if (!cargando()) {
+          <p class="rol-bar__meta">
+            {{ roles().length }} de {{ filas().length }} creados · un rol debe existir aquí antes de asignarlo a un usuario
+          </p>
+        }
+      </div>
+
+      <div class="mun-bar__actions">
+        <button type="button" class="mun-icon-btn" (click)="cargar()" [disabled]="cargando()"
+          [attr.aria-label]="cargando() ? 'Actualizando' : 'Refrescar'">
+          <svg class="mun-icon" [class.is-spinning]="cargando()" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>
+          </svg>
+        </button>
+        <input #archivoRoles type="file" accept=".csv,.json,.xlsx,.txt" hidden (change)="importar(archivoRoles)" />
+        <button type="button" class="mun-btn mun-btn--ghost" (click)="archivoRoles.click()"
+          [disabled]="guardando() || cargando()" title="Importar uno o varios roles desde CSV, JSON o Excel (.xlsx)">
+          {{ guardando() ? 'Procesando…' : 'Importar' }}
+        </button>
+        <button type="button" class="mun-btn mun-btn--solid" (click)="abrirCrear()"
+          [disabled]="guardando() || cargando() || !disponibles().length"
+          [title]="disponibles().length ? 'Agregar un rol del sistema' : 'Todos los roles del sistema ya están creados'">
+          <svg class="mun-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+          </svg>
+          Nuevo rol
+        </button>
+      </div>
+    </header>
+
+    <div class="mun-body">
+      @if (resultadoImport(); as res) {
+        <section class="rol-import" aria-label="Resultado de la importación">
+          <div class="rol-import__head">
+            <p class="rol-import__title">Resultado de la importación</p>
+            <button type="button" class="mun-link" (click)="resultadoImport.set(null)">Cerrar</button>
+          </div>
+          <ul class="rol-import__list">
+            @for (r of res; track $index) {
+              <li>
+                <span class="mun-mono">{{ r.roleName || '—' }}</span>
+                <span class="mun-status" [class.is-off]="r.result !== 'CREADO'">{{ r.result === 'CREADO' ? 'Creado' : 'Omitido' }}</span>
+                <span class="rol-import__detail">{{ r.detail ?? '' }}</span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (cargando() && !roles().length) {
+        <ul class="rol-list" aria-hidden="true">
+          @for (i of [1, 2, 3, 4]; track i) {
+            <li class="rol-row rol-row--skel"><span class="mun-seal"></span><span class="mun-skel__line"></span></li>
+          }
+        </ul>
+      } @else if (!filas().length) {
+        <div class="mun-empty">
+          <span class="mun-seal mun-seal--lg mun-seal--ghost" aria-hidden="true">+</span>
+          <p class="mun-empty__title">Sin roles</p>
+          <p class="mun-empty__text">Agrega los roles con «Nuevo rol» o cárgalos desde un archivo con «Importar».</p>
+        </div>
+      } @else {
+        <ul class="rol-list" aria-label="Catálogo de roles">
+          @for (f of filas(); track f.codigo) {
+            @let i = info(f.codigo);
+            @let off = f.rol?.status === 'INACTIVO';
+            <li class="rol-row" [class.is-pending]="!f.rol" [class.is-off]="off">
+              <span class="mun-seal" [class.mun-seal--ghost]="!f.rol" aria-hidden="true">{{ i.sigla }}</span>
+              <div class="rol-row__name">
+                <strong>{{ i.nombre }}</strong>
+                <span class="mun-mono">{{ f.codigo }}</span>
+              </div>
+              <p class="rol-row__desc">
+                {{ f.rol ? descripcion(f.rol) : i.descripcion }}
+                <span class="rol-row__scope">Alcance: {{ i.alcance }}</span>
+              </p>
+              @if (f.rol; as rol) {
+                <div class="rol-row__state">
+                  <span class="mun-status" [class.is-off]="off">{{ off ? 'Inactivo' : 'Activo' }}</span>
+                  @if (rol.createdAt) {
+                    <span class="rol-row__date">Desde {{ rol.createdAt | date: 'dd/MM/yyyy' }}</span>
+                  }
+                </div>
+                <div class="rol-row__actions">
+                  <button type="button" class="mun-link" (click)="abrirEditar(rol)" [disabled]="guardando()"
+                    [attr.aria-label]="'Editar ' + i.nombre">Editar</button>
+                  @if (rol.roleName !== 'SUPER_ADMIN') {
+                    <button type="button" class="mun-link mun-link--danger" (click)="eliminar(rol)" [disabled]="guardando()"
+                      [attr.aria-label]="'Eliminar ' + i.nombre">Eliminar</button>
+                  }
+                </div>
+              } @else {
+                <div class="rol-row__state"><span class="rol-row__pending">Sin crear</span></div>
+                <div class="rol-row__actions">
+                  <button type="button" class="mun-btn mun-btn--ghost mun-btn--sm" (click)="abrirCrear(f.codigo)" [disabled]="guardando()"
+                    [attr.aria-label]="'Crear ' + i.nombre">Crear</button>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </section>
+</div>
+
+@if (modal(); as m) {
+  <div class="civic-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-rol-title" (click)="modal.set(null)">
+    <div class="civic-modal civic-modal--md mun-modal" (click)="$event.stopPropagation()">
+      <header class="mun-modal__header">
+        <div class="rol-modal__head">
+          <span class="mun-seal mun-seal--lg" aria-hidden="true">{{ info(form.roleName).sigla }}</span>
+          <div>
+            <p class="mun-kicker">{{ m.id ? 'Editar rol' : 'Nuevo rol' }}</p>
+            <h2 id="modal-rol-title" class="mun-modal__title">{{ info(form.roleName).nombre }}</h2>
+            <p class="rol-modal__code"><span class="mun-mono">{{ form.roleName }}</span> · {{ info(form.roleName).alcance }}</p>
+          </div>
+        </div>
+        <button type="button" class="mun-icon-btn" (click)="modal.set(null)" aria-label="Cerrar">
+          <svg class="mun-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </header>
+
+      <div class="mun-modal__body rol-modal__body">
+        @if (!m.id) {
+          <div class="mun-field" role="radiogroup" aria-labelledby="rol-nombre-lbl">
+            <span id="rol-nombre-lbl" class="mun-field__label">Rol <span class="mun-req" aria-hidden="true">*</span></span>
+            <div class="mun-choice">
+              @for (r of disponibles(); track r) {
+                <label class="mun-choice__opt" [class.is-on]="form.roleName === r">
+                  <input type="radio" name="rol-nombre" class="mun-sr-only" [value]="r" [ngModel]="form.roleName" (ngModelChange)="cambiarNombre($event)" />
+                  <strong>{{ info(r).nombre }}</strong>
+                  <span>{{ info(r).alcance }}</span>
+                </label>
+              }
+            </div>
+            <p class="mun-field__hint">Solo roles que el sistema reconoce; sus permisos están definidos en la plataforma.</p>
+          </div>
+        } @else {
+          @let bloqueado = form.roleName === 'SUPER_ADMIN';
+          <div class="mun-field" role="radiogroup" aria-labelledby="rol-estado-lbl">
+            <span id="rol-estado-lbl" class="mun-field__label">Estado</span>
+            <div class="mun-choice">
+              @for (e of estados; track e.valor) {
+                <label class="mun-choice__opt" [class.is-on]="form.status === e.valor" [class.is-disabled]="bloqueado">
+                  <input type="radio" name="rol-estado" class="mun-sr-only" [value]="e.valor" [(ngModel)]="form.status" [disabled]="bloqueado" />
+                  <strong>{{ e.nombre }}</strong>
+                  <span>{{ e.efecto }}</span>
+                </label>
+              }
+            </div>
+            @if (bloqueado) {
+              <p class="mun-field__hint">El super administrador siempre está activo.</p>
+            }
+          </div>
+        }
+        <div class="mun-field">
+          <label for="rol-desc">Descripción <span class="mun-count">{{ form.description.length }}/160</span></label>
+          <textarea id="rol-desc" class="mun-input rol-modal__desc" rows="3" maxlength="160" [(ngModel)]="form.description"></textarea>
+        </div>
+      </div>
+
+      <footer class="mun-modal__footer">
+        <button type="button" class="mun-link mun-modal__cancel" (click)="modal.set(null)" [disabled]="guardando()">Cancelar</button>
+        <button type="button" class="mun-btn mun-btn--solid" (click)="guardar()" [disabled]="guardando() || !form.roleName">
+          {{ guardando() ? 'Guardando…' : (m.id ? 'Guardar cambios' : 'Crear rol') }}
+        </button>
+      </footer>
+    </div>
+  </div>
+}

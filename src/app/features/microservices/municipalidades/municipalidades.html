@@ -1,0 +1,541 @@
+<div class="civic-page mun-page">
+  <h1 class="mun-sr-only">{{ esSuperAdmin ? 'Municipalidades' : 'Mi municipalidad' }}</h1>
+
+  <section class="mun-shell" aria-label="Padrón de municipalidades">
+    <header class="mun-bar">
+      @if (esSuperAdmin) {
+        <div class="mun-tabs" role="group" aria-label="Filtrar por estado">
+          @for (t of [['TODAS', 'Todas'], ['ACTIVA', 'Activas'], ['SUSPENDIDA', 'Suspendidas']]; track t[0]) {
+            <button type="button" class="mun-tabs__btn"
+              [class.is-active]="filtroEstado === t[0]"
+              [attr.aria-pressed]="filtroEstado === t[0]"
+              (click)="filtroEstado = $any(t[0])">
+              {{ t[1] }}
+              <span class="mun-tabs__count">{{ conteo($any(t[0])) }}</span>
+            </button>
+          }
+        </div>
+      } @else {
+        <p class="mun-bar__title">Ficha de tu municipalidad</p>
+      }
+
+      <div class="mun-bar__actions">
+        @if (esSuperAdmin) {
+          <label class="mun-search">
+            <span class="mun-sr-only">Buscar municipalidad</span>
+            <svg class="mun-icon" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.2-5.2M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15Z"/>
+            </svg>
+            <input type="search" [(ngModel)]="busqueda" placeholder="Nombre o RUC" autocomplete="off" />
+          </label>
+        }
+        <button type="button" class="mun-icon-btn" (click)="cargar()" [disabled]="cargando"
+          [attr.aria-label]="cargando ? 'Actualizando' : 'Refrescar'">
+          <svg class="mun-icon" [class.is-spinning]="cargando" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>
+          </svg>
+        </button>
+        @if (esSuperAdmin && puedeExportar) {
+          <div class="mun-export" role="group" aria-label="Exportar padrón">
+            <button type="button" class="mun-btn mun-btn--ghost" (click)="exportar('pdf')"
+              [disabled]="generandoReporte || !visibles.length" title="Padrón de las municipalidades listadas, en PDF">PDF</button>
+            <button type="button" class="mun-btn mun-btn--ghost" (click)="exportar('xlsx')"
+              [disabled]="generandoReporte || !visibles.length" title="Padrón y sus entidades, en Excel">Excel</button>
+          </div>
+        }
+        @if (esSuperAdmin) {
+          <button type="button" class="mun-btn mun-btn--solid" (click)="abrirNueva()">
+            <svg class="mun-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+            </svg>
+            Nueva municipalidad
+          </button>
+        }
+      </div>
+    </header>
+
+    <div class="mun-body">
+      @if (cargando && !municipalidades.length) {
+        <div class="mun-split" aria-hidden="true">
+          <ul class="mun-index">
+            @for (i of [1, 2, 3, 4]; track i) {
+              <li class="mun-index__skel"><span class="mun-seal mun-seal--sm"></span><span class="mun-skel__line"></span></li>
+            }
+          </ul>
+          <div class="mun-ficha mun-ficha--skel"><span class="mun-skel__line"></span><span class="mun-skel__line"></span></div>
+        </div>
+      } @else if (errorCarga) {
+        <div class="mun-empty mun-empty--error" role="alert">
+          <p class="mun-empty__title">No se pudieron cargar los datos</p>
+          <p class="mun-empty__text">{{ errorCarga }}</p>
+          <button type="button" class="mun-btn" (click)="cargar()">Reintentar</button>
+        </div>
+      } @else if (!esSuperAdmin && seleccionada) {
+        <ng-container *ngTemplateOutlet="ficha; context: { $implicit: seleccionada }" />
+      } @else if (visibles.length) {
+        <div class="mun-split">
+          <nav class="mun-index" aria-label="Municipalidades">
+            <ul>
+              @for (m of visibles; track m.id) {
+                @let n = nombre(m);
+                @let total = entidadesDe(m).length;
+                <li>
+                  <button type="button" class="mun-index__item" [class.is-off]="m.status !== 'ACTIVA'"
+                    [class.is-current]="seleccionada?.id === m.id" [attr.aria-current]="seleccionada?.id === m.id ? 'true' : null"
+                    (click)="seleccionar(m)">
+                    <span class="mun-seal mun-seal--sm" aria-hidden="true">
+                      @if (m.logoUrl) { <img [src]="m.logoUrl" alt="" /> } @else { {{ sigla(m) }} }
+                    </span>
+                    <span class="mun-index__name">
+                      <span class="mun-index__lugar">{{ n.lugar }}</span>
+                      <span class="mun-index__meta">
+                        {{ m.type === 'PROVINCIAL' ? 'Provincial' : m.type === 'DISTRITAL' ? 'Distrital' : 'Municipalidad' }}
+                        · {{ total }} {{ total === 1 ? 'entidad' : 'entidades' }}
+                      </span>
+                    </span>
+                    <span class="mun-dot" [class.is-off]="m.status !== 'ACTIVA'"
+                      [attr.title]="m.status === 'ACTIVA' ? 'Activa' : 'Suspendida'">
+                      <span class="mun-sr-only">{{ m.status === 'ACTIVA' ? 'Activa' : 'Suspendida' }}</span>
+                    </span>
+                  </button>
+                </li>
+              }
+            </ul>
+          </nav>
+          @if (seleccionada; as s) {
+            <ng-container *ngTemplateOutlet="ficha; context: { $implicit: s }" />
+          }
+        </div>
+      } @else if (municipalidades.length) {
+        <div class="mun-empty">
+          <p class="mun-empty__title">Sin coincidencias</p>
+          <p class="mun-empty__text">Ninguna municipalidad coincide con la búsqueda o el filtro.</p>
+          <button type="button" class="mun-link" (click)="busqueda = ''; filtroEstado = 'TODAS'">Ver todas</button>
+        </div>
+      } @else {
+        <div class="mun-empty">
+          <span class="mun-seal mun-seal--lg mun-seal--ghost" aria-hidden="true">+</span>
+          <p class="mun-empty__title">Aún no hay municipalidades</p>
+          <p class="mun-empty__text">Cada municipalidad tiene sus propias entidades, personal y emergencias. Registra la primera para empezar.</p>
+          @if (esSuperAdmin) {
+            <button type="button" class="mun-btn mun-btn--solid" (click)="abrirNueva()">Nueva municipalidad</button>
+          }
+        </div>
+      }
+    </div>
+  </section>
+</div>
+
+<!-- Ficha de registro: la misma para SUPER_ADMIN (columna derecha) y para el admin municipal (página completa). -->
+<ng-template #ficha let-m>
+  @let n = nombre(m);
+  @let j = jurisdiccion(m);
+  @let r = resumenEntidades(m);
+  <article class="mun-ficha" [class.is-off]="m.status !== 'ACTIVA'" [attr.aria-labelledby]="'ficha-' + m.id">
+    <header class="mun-ficha__head">
+      <span class="mun-seal mun-seal--xl" aria-hidden="true">
+        @if (m.logoUrl) { <img [src]="m.logoUrl" alt="" /> } @else { {{ sigla(m) }} }
+      </span>
+      <div class="mun-ficha__title">
+        <p class="mun-ficha__kicker">
+          {{ n.tipo || 'Municipalidad' }}
+          <span class="mun-status" [class.is-off]="m.status !== 'ACTIVA'">{{ m.status === 'ACTIVA' ? 'Activa' : 'Suspendida' }}</span>
+        </p>
+        <h2 class="mun-ficha__lugar" [id]="'ficha-' + m.id">{{ n.lugar }}</h2>
+        @if (j) {
+          <p class="mun-ficha__ruta">
+            @for (p of j.ruta; track $index) {
+              @if ($index) { <span class="mun-ficha__sep" aria-hidden="true">/</span> }
+              <span>{{ p }}</span>
+            }
+          </p>
+        }
+      </div>
+      <div class="mun-ficha__actions">
+        <button type="button" class="mun-btn mun-btn--solid" (click)="editar(m)" [disabled]="guardando">Editar datos</button>
+        @if (puedeExportar) {
+          <span class="mun-ficha__export">
+            Ficha:
+            <button type="button" class="mun-link" (click)="exportar('pdf', m)" [disabled]="generandoReporte">PDF</button>
+            <button type="button" class="mun-link" (click)="exportar('xlsx', m)" [disabled]="generandoReporte">Excel</button>
+          </span>
+        }
+        @if (esSuperAdmin) {
+          <button type="button" class="mun-link" [class.mun-link--danger]="m.status === 'ACTIVA'" (click)="toggleEstado(m)" [disabled]="guardando">
+            {{ m.status === 'ACTIVA' ? 'Suspender' : 'Reactivar' }}
+          </button>
+        }
+      </div>
+    </header>
+
+    <!-- Datos de registro: como la cabecera de un padrón oficial. -->
+    <dl class="mun-ledger">
+      <div><dt>RUC</dt><dd class="mun-mono">{{ m.ruc }}</dd></div>
+      <div><dt>Tipo</dt><dd>{{ m.type === 'PROVINCIAL' ? 'Provincial' : m.type === 'DISTRITAL' ? 'Distrital' : '—' }}</dd></div>
+      <div><dt>UBIGEO sede</dt><dd class="mun-mono" [class.is-muted]="!m.ubigeo">{{ m.ubigeo || 'Sin registrar' }}</dd></div>
+      <div><dt>Entidades</dt><dd class="mun-mono">{{ r.total }} <span class="mun-ledger__sub">{{ r.activas }} activas</span></dd></div>
+    </dl>
+
+    @if (!m.ubigeo || !m.type) {
+      <!-- Registros anteriores al UBIGEO: sin él no se valida qué entidades caen en su jurisdicción. -->
+      <div class="mun-notice" role="status">
+        <p class="mun-notice__text">
+          <strong>Falta la jurisdicción.</strong>
+          Sin distrito sede y tipo no se puede comprobar qué entidades le pertenecen.
+        </p>
+        @if (esSuperAdmin) {
+          <button type="button" class="mun-btn" (click)="editar(m)" [disabled]="guardando">Completar ahora</button>
+        }
+      </div>
+    }
+
+    <div class="mun-ficha__grid">
+      <section class="mun-block" aria-label="Jurisdicción y contacto">
+        <h3 class="mun-block__title">Jurisdicción</h3>
+        <p class="mun-block__lead" [class.is-muted]="!j">{{ j ? j.cobertura : 'Sin UBIGEO registrado' }}</p>
+
+        <h3 class="mun-block__title">Contacto</h3>
+        <dl class="mun-contact-list">
+          <div>
+            <dt>Teléfono</dt>
+            <dd>@if (m.phone) { <a [href]="'tel:' + m.phone">{{ m.phone }}</a> } @else { <span class="is-muted">Sin registrar</span> }</dd>
+          </div>
+          <div>
+            <dt>Email</dt>
+            <dd>@if (m.email) { <a [href]="'mailto:' + m.email">{{ m.email }}</a> } @else { <span class="is-muted">Sin registrar</span> }</dd>
+          </div>
+          <div>
+            <dt>Dirección</dt>
+            <dd [class.is-muted]="!m.address">{{ m.address || 'Sin registrar' }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="mun-block mun-block--map" aria-label="Ubicación de la sede">
+        @if (m.location) {
+          <div class="mun-ficha__map">
+            <app-geo-map-picker mode="viewer" [lat]="m.location.lat" [lng]="m.location.lng" height="100%" [zoom]="15" markerTitle="Sede municipal" />
+          </div>
+          <p class="mun-ficha__coords">
+            <span class="mun-mono">{{ m.location.lat }}, {{ m.location.lng }}</span>
+            <a class="mun-link" target="_blank" rel="noopener"
+              [href]="'https://www.openstreetmap.org/?mlat=' + m.location.lat + '&mlon=' + m.location.lng + '#map=17/' + m.location.lat + '/' + m.location.lng">
+              Abrir mapa
+            </a>
+          </p>
+        } @else {
+          <p class="mun-block__lead is-muted">Sede sin ubicación en el mapa.</p>
+        }
+      </section>
+    </div>
+
+    <section class="mun-block mun-ents" [attr.aria-labelledby]="'ents-' + m.id">
+      <div class="mun-ents__head">
+        <h3 class="mun-block__title" [id]="'ents-' + m.id">Entidades de la municipalidad</h3>
+        @if (r.total) {
+          <a class="mun-link" routerLink="/entidades" [queryParams]="esSuperAdmin ? { municipalidad: m.id } : {}">
+            Ver {{ r.total === 1 ? 'la entidad' : 'las ' + r.total + ' entidades' }} →
+          </a>
+        }
+      </div>
+      @if (r.total) {
+        <!-- Barra de composición: cada tramo es la proporción real de ese tipo. -->
+        <div class="mun-ents__bar" role="img" [attr.aria-label]="'Composición por tipo: ' + r.porTipo.length + ' tipos'">
+          @for (t of r.porTipo; track t[0]) {
+            <span [style.flex-grow]="t[1]" [attr.data-i]="$index % 5"></span>
+          }
+        </div>
+        <ul class="mun-ents__tipos">
+          @for (t of r.porTipo; track t[0]) {
+            <li [attr.data-i]="$index % 5"><span class="mun-ents__sw" aria-hidden="true"></span>{{ tipoEntidad(t[0]) }} <strong class="mun-mono">{{ t[1] }}</strong></li>
+          }
+        </ul>
+        <table class="mun-ents__table">
+          <thead><tr><th scope="col">Entidad</th><th scope="col">Tipo</th><th scope="col">Distrito</th><th scope="col">Estado</th></tr></thead>
+          <tbody>
+            @for (e of entidadesDe(m).slice(0, 5); track e.id) {
+              <tr>
+                <td class="mun-ents__name">{{ e.businessName }}</td>
+                <td>{{ tipoEntidad(e.entityType) }}</td>
+                <td [class.is-muted]="!e.ubigeo">{{ distritoDe(e) || '—' }}</td>
+                <td><span class="mun-status" [class.is-off]="e.status !== 'ACTIVO'">{{ e.status === 'ACTIVO' ? 'Activa' : 'Inactiva' }}</span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        @if (r.total > 5) { <p class="mun-ents__more">y {{ r.total - 5 }} más.</p> }
+      } @else {
+        <p class="mun-block__lead is-muted">
+          Aún no tiene entidades.
+          <a class="mun-link" routerLink="/entidades">Registrarlas en Entidades</a>
+        </p>
+      }
+    </section>
+
+    @if (!esSuperAdmin) {
+      <p class="mun-note">El RUC, el tipo y la jurisdicción los gestiona el administrador del sistema.</p>
+    }
+  </article>
+</ng-template>
+
+@if (modalAbierto) {
+  <div ngSkipHydration class="civic-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-muni-title"
+       (click)="cerrarModal()">
+    <div class="civic-modal civic-modal--xl mun-modal" (click)="$event.stopPropagation()">
+      <header class="mun-modal__header">
+        <div>
+          <p class="mun-kicker">{{ form.id ? 'Editar municipalidad' : 'Alta de municipalidad' }}</p>
+          <h2 id="modal-muni-title" class="mun-modal__title">{{ form.id ? form.razonSocial : 'Nueva municipalidad' }}</h2>
+        </div>
+        <button type="button" class="mun-icon-btn" (click)="cerrarModal()" aria-label="Cerrar">
+          <svg class="mun-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </header>
+
+      <div class="mun-modal__body mun-wiz">
+        <nav class="mun-steps" aria-label="Secciones del formulario">
+          <ol>
+            @for (p of pasos; track p.id; let i = $index) {
+              @let e = estadoPaso(i);
+              <li>
+                <button type="button" class="mun-steps__btn" [class.is-active]="paso === i" [class.is-done]="e.listo"
+                  [class.is-error]="pasoConError(i)" [attr.aria-current]="paso === i ? 'step' : null" (click)="paso = i">
+                  <span class="mun-steps__num" aria-hidden="true">
+                    @if (e.listo && paso !== i) {
+                      <svg class="mun-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                    } @else { {{ i + 1 }} }
+                  </span>
+                  <span class="mun-steps__txt">
+                    <strong>{{ p.titulo }}</strong>
+                    <span>{{ e.texto }}</span>
+                  </span>
+                </button>
+              </li>
+            }
+          </ol>
+        </nav>
+
+        <section class="mun-pane" aria-labelledby="mun-pane-title">
+          <header class="mun-pane__head">
+            <p class="mun-pane__step">Sección {{ paso + 1 }} de {{ pasos.length }}</p>
+            <h3 id="mun-pane-title" class="mun-pane__title">{{ pasos[paso].titulo }}</h3>
+            <p class="mun-pane__lead">{{ pasos[paso].lead }}</p>
+          </header>
+
+          @switch (pasos[paso].id) {
+            @case ('identidad') {
+              <div class="mun-ident">
+            <!-- Logo: el mismo sello del padrón, que acepta clic o arrastrar una imagen. -->
+            <div class="mun-logo">
+              <label class="mun-logo__drop" [class.is-busy]="subiendoLogo" [class.has-img]="logoPreview"
+                (dragover)="$event.preventDefault()"
+                (drop)="$event.preventDefault(); elegirLogo($event.dataTransfer?.files?.[0])">
+                <input type="file" accept="image/*" class="mun-sr-only" [disabled]="subiendoLogo"
+                  (change)="elegirLogo($any($event.target).files?.[0]); $any($event.target).value = ''" />
+                @if (logoPreview) {
+                  <img [src]="logoPreview" alt="Logo de la municipalidad" />
+                } @else {
+                  <svg class="mun-icon" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.16-5.16a2.25 2.25 0 013.18 0l5.16 5.16m-1.5-1.5l1.41-1.41a2.25 2.25 0 013.18 0l2.91 2.91M3.75 21h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v13.5a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V9.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
+                  </svg>
+                }
+                <span class="mun-sr-only">Subir logo</span>
+              </label>
+              <div class="mun-logo__copy">
+                <p class="mun-logo__title">Logo <span class="mun-opt">opcional</span></p>
+                <p class="mun-field__hint" aria-live="polite">
+                  @if (subiendoLogo) { Subiendo… } @else { PNG, JPG o SVG · 2 MB }
+                </p>
+                <div class="mun-logo__actions">
+                  <label class="mun-btn mun-btn--ghost mun-btn--sm" [class.is-disabled]="subiendoLogo">
+                    <input type="file" accept="image/*" class="mun-sr-only" [disabled]="subiendoLogo"
+                      (change)="elegirLogo($any($event.target).files?.[0]); $any($event.target).value = ''" />
+                    {{ logoPreview ? 'Cambiar' : 'Elegir imagen' }}
+                  </label>
+                  @if (logoPreview && !subiendoLogo) {
+                    <button type="button" class="mun-link mun-link--danger" (click)="quitarLogo()">Quitar</button>
+                  }
+                </div>
+                @if (errorLogo) { <p class="mun-field__error" role="alert">{{ errorLogo }}</p> }
+              </div>
+            </div>
+
+                <div class="mun-ident__fields">
+            <div class="mun-field" [class.is-invalid]="tieneError('ruc')">
+              <label for="mun-ruc">RUC <span class="mun-req" aria-hidden="true">*</span>
+                <span class="mun-count mun-mono" aria-hidden="true">{{ form.ruc.length }}/11</span>
+              </label>
+              <input id="mun-ruc" class="mun-input mun-mono" maxlength="11" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="20xxxxxxxxx"
+                [value]="form.ruc" (input)="escribirRuc($any($event.target))" (blur)="validarCampo('ruc')" [disabled]="!!form.id"
+                [attr.aria-invalid]="tieneError('ruc')" />
+              @if (tieneError('ruc')) {
+                <p class="mun-field__error" role="alert">{{ errores['ruc'] }}</p>
+              } @else {
+                <p class="mun-field__hint">{{ form.id ? 'Usuario de la cuenta titular; no se cambia.' : 'Empieza con 20. Será el usuario de la cuenta titular.' }}</p>
+              }
+            </div>
+            <div class="mun-field" [class.is-invalid]="tieneError('razonSocial')">
+              <label for="mun-razon">Razón social <span class="mun-req" aria-hidden="true">*</span></label>
+              <input id="mun-razon" class="mun-input" maxlength="200" placeholder="Municipalidad Distrital de…"
+                [(ngModel)]="form.razonSocial" (blur)="validarCampo('razonSocial')" [attr.aria-invalid]="tieneError('razonSocial')" />
+              @if (tieneError('razonSocial')) { <p class="mun-field__error" role="alert">{{ errores['razonSocial'] }}</p> }
+            </div>
+                  @if (esSuperAdmin) {
+              <div class="mun-field" [class.is-invalid]="tieneError('password')">
+                <label for="mun-pass">Contraseña @if (!form.id) { <span class="mun-req" aria-hidden="true">*</span> }</label>
+                <input id="mun-pass" type="password" class="mun-input" maxlength="72" autocomplete="new-password"
+                  [(ngModel)]="form.password" (blur)="validarCampo('password')" [attr.aria-invalid]="tieneError('password')"
+                  [placeholder]="form.id ? 'Dejar vacío para no cambiarla' : 'Mínimo 8 caracteres'" />
+                @if (tieneError('password')) {
+                  <p class="mun-field__error" role="alert">{{ errores['password'] }}</p>
+                } @else {
+                  <p class="mun-field__hint">Con el RUC y esta clave ingresa la municipalidad; luego crea sus administradores con DNI.</p>
+                }
+              </div>
+                  }
+                </div>
+              </div>
+            }
+            @case ('jurisdiccion') {
+              <div class="mun-grid">
+            <div class="mun-field mun-field--wide" role="radiogroup" aria-labelledby="mun-tipo-lbl">
+              <span id="mun-tipo-lbl" class="mun-field__label">Tipo <span class="mun-req" aria-hidden="true">*</span></span>
+              <div class="mun-choice">
+                @for (t of tiposMunicipalidad; track t.valor) {
+                  <label class="mun-choice__opt" [class.is-on]="form.tipo === t.valor" [class.is-disabled]="!esSuperAdmin">
+                    <input type="radio" name="mun-tipo" class="mun-sr-only" [value]="t.valor" [(ngModel)]="form.tipo" [disabled]="!esSuperAdmin" />
+                    <strong>{{ t.nombre }}</strong>
+                    <span>{{ t.alcance }}</span>
+                  </label>
+                }
+              </div>
+            </div>
+            <div class="mun-field mun-field--wide" [class.is-invalid]="tieneError('ubigeo')">
+              <span class="mun-field__label">Distrito sede <span class="mun-opt">UBIGEO INEI</span> <span class="mun-req" aria-hidden="true">*</span></span>
+              <div class="mun-ubigeo">
+                <app-ubigeo-select class="mun-ubigeo__select" selectClass="mun-input" [value]="form.ubigeo" [disabled]="!esSuperAdmin" [invalid]="tieneError('ubigeo')"
+                  (valueChange)="form.ubigeo = $event; validarCampo('ubigeo')" />
+                <aside class="mun-ubigeo__resumen" aria-live="polite">
+                  @if (jurisdiccionForm; as j) {
+                    <p class="mun-ubigeo__code mun-mono">{{ form.ubigeo }}</p>
+                    <p class="mun-ubigeo__ruta">{{ j.ruta.join(' › ') }}</p>
+                    <p class="mun-ubigeo__cob">{{ j.cobertura }}</p>
+                  } @else {
+                    <p class="mun-ubigeo__vacio">Elige departamento, provincia y distrito. Aquí verás qué cubre la municipalidad.</p>
+                  }
+                </aside>
+              </div>
+              @if (tieneError('ubigeo')) {
+                <p class="mun-field__error" role="alert">{{ errores['ubigeo'] }}</p>
+              } @else if (!esSuperAdmin) {
+                <p class="mun-field__hint">Solo el administrador del sistema cambia la jurisdicción.</p>
+              }
+            </div>
+              </div>
+            }
+            @case ('sede') {
+              <div class="mun-sede" [class.is-invalid]="tieneError('lat')">
+          <div class="mun-map">
+            <app-geo-map-picker
+              [lat]="ubicacion?.lat"
+              [lng]="ubicacion?.lng"
+              height="100%"
+              [zoom]="16"
+              markerTitle="Sede municipal"
+              hint="Haz clic en el mapa para marcar la sede"
+              (locationChange)="fijarUbicacion($event)" />
+          <form class="mun-place" role="search" (ngSubmit)="buscarLugar()">
+            <label class="mun-search mun-place__bar">
+              <span class="mun-sr-only">Buscar lugar</span>
+              <svg class="mun-icon" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.2-5.2M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15Z"/>
+              </svg>
+              <input type="search" name="lugar" [(ngModel)]="busquedaLugar" placeholder="Busca el distrito, plaza o calle" autocomplete="off" />
+            </label>
+            <button type="submit" class="mun-btn mun-btn--ghost" [disabled]="buscandoLugar || busquedaLugar.trim().length < 3">
+              {{ buscandoLugar ? 'Buscando…' : 'Buscar' }}
+            </button>
+            @if (lugares.length) {
+              <ul class="mun-place__results" aria-label="Resultados">
+                @for (l of lugares; track $index) {
+                  <li>
+                    <button type="button" (click)="elegirLugar(l)">
+                      <strong>{{ l.nombre }}</strong>
+                      <span>{{ l.detalle }}</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </form>
+          @if (errorLugar) { <p class="mun-place__msg" role="status">{{ errorLugar }}</p> }
+
+          </div>
+          @if (tieneError('lat')) {
+            <p class="mun-field__error" role="alert">{{ errores['lat'] }}</p>
+          }
+
+          <div class="mun-field mun-field--wide">
+            <label for="mun-dir">Dirección</label>
+            <input id="mun-dir" class="mun-input" maxlength="255" placeholder="Jr. Bolognesi 250" [(ngModel)]="form.direccion" />
+          </div>
+              </div>
+            }
+            @default {
+              <div class="mun-grid mun-grid--2">
+            <div class="mun-field" [class.is-invalid]="tieneError('telefono')">
+              <label for="mun-tel">Teléfono</label>
+              <input id="mun-tel" class="mun-input" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="(01) 581-2015"
+                [value]="form.telefono" (input)="escribirTelefono($any($event.target))" (blur)="validarCampo('telefono')"
+                [attr.aria-invalid]="tieneError('telefono')" />
+              @if (tieneError('telefono')) { <p class="mun-field__error" role="alert">{{ errores['telefono'] }}</p> }
+            </div>
+            <div class="mun-field" [class.is-invalid]="tieneError('email')">
+              <label for="mun-email">Email</label>
+              <input id="mun-email" type="email" class="mun-input" autocomplete="email" maxlength="120" placeholder="mesadepartes@…gob.pe"
+                [(ngModel)]="form.email" (blur)="validarCampo('email')" [attr.aria-invalid]="tieneError('email')" />
+              @if (tieneError('email')) { <p class="mun-field__error" role="alert">{{ errores['email'] }}</p> }
+            </div>
+              </div>
+            }
+          }
+
+          @if (errorModal) { <p class="mun-modal__error" role="alert">{{ errorModal }}</p> }
+        </section>
+      </div>
+
+      <footer class="mun-modal__footer">
+        <button type="button" class="mun-link mun-modal__cancel" (click)="cerrarModal()" [disabled]="guardando">Cancelar</button>
+        @if (paso > 0) {
+          <button type="button" class="mun-btn mun-btn--ghost" (click)="paso = paso - 1">Anterior</button>
+        }
+        @if (paso < pasos.length - 1) {
+          <button type="button" class="mun-btn mun-btn--ghost" (click)="paso = paso + 1">Siguiente: {{ pasos[paso + 1].titulo }}</button>
+        }
+        <button type="button" class="mun-btn mun-btn--solid" (click)="guardar()" [disabled]="guardando || subiendoLogo">
+          {{ guardando ? 'Guardando…' : (form.id ? 'Guardar cambios' : 'Crear municipalidad') }}
+        </button>
+      </footer>
+    </div>
+  </div>
+}
+
+@if (aSuspender; as m) {
+  <div ngSkipHydration class="civic-modal-backdrop" role="alertdialog" aria-modal="true"
+       aria-labelledby="mun-susp-title" aria-describedby="mun-susp-desc" (click)="aSuspender = null">
+    <div class="civic-modal civic-modal--sm mun-modal" (click)="$event.stopPropagation()">
+      <header class="mun-modal__header">
+        <div>
+          <h2 id="mun-susp-title" class="mun-modal__title">¿Suspender {{ nombre(m).lugar }}?</h2>
+          <p id="mun-susp-desc" class="mun-modal__text">Su personal y sus entidades no podrán ingresar hasta que la reactives. Los datos se conservan.</p>
+        </div>
+      </header>
+      <footer class="mun-modal__footer">
+        <button type="button" class="mun-btn mun-btn--ghost" (click)="aSuspender = null">Cancelar</button>
+        <button type="button" class="mun-btn mun-btn--danger" (click)="confirmarSuspension()">Suspender</button>
+      </footer>
+    </div>
+  </div>
+}

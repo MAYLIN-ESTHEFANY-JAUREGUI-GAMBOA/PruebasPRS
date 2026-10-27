@@ -1,0 +1,758 @@
+<div class="civic-page castigo-page">
+
+  <header class="castigo-page-head">
+    <div class="castigo-page-head__top">
+      <div class="castigo-page-head__copy">
+        <p class="castigo-page-head__eyebrow">Moderación</p>
+        <h1 class="castigo-page-head__title">Ciudadanos y sanciones</h1>
+        <p class="castigo-page-head__lead">
+          Cuentas de la app móvil y expedientes con escala progresiva de sanciones.
+        </p>
+      </div>
+      <button type="button" class="castigo-page-head__refresh" (click)="cargarDatos()" [disabled]="cargando"
+        [attr.aria-label]="cargando ? 'Actualizando datos' : 'Refrescar datos'">
+        <svg class="castigo-btn-icon" [class.is-spinning]="cargando" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="castigo-summary-bar" role="group" aria-label="Resumen operativo">
+      <div class="castigo-summary-bar__item">
+        <span class="castigo-summary-bar__icon castigo-summary-bar__icon--primary" aria-hidden="true">
+          <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+        </span>
+        <div class="castigo-summary-bar__copy">
+          <strong>{{ conteoCiudadanos() }}</strong>
+          <span>Registrados</span>
+        </div>
+      </div>
+      <div class="castigo-summary-bar__item">
+        <span class="castigo-summary-bar__icon castigo-summary-bar__icon--success" aria-hidden="true">
+          <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        </span>
+        <div class="castigo-summary-bar__copy">
+          <strong>{{ conteoActivos() }}</strong>
+          <span>Activos</span>
+        </div>
+      </div>
+      <div class="castigo-summary-bar__item">
+        <span class="castigo-summary-bar__icon castigo-summary-bar__icon--warning" aria-hidden="true">
+          <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+        </span>
+        <div class="castigo-summary-bar__copy">
+          <strong>{{ sancionesActivas.length }}</strong>
+          <span>Sancionados</span>
+        </div>
+      </div>
+      <div class="castigo-summary-bar__item">
+        <span class="castigo-summary-bar__icon castigo-summary-bar__icon--muted" aria-hidden="true">
+          <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+        </span>
+        <div class="castigo-summary-bar__copy">
+          <strong>{{ historial.length }}</strong>
+          <span>Historial</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="castigo-segment-nav" aria-label="Secciones">
+    <button type="button" class="castigo-segment-nav__btn"
+      [class.is-active]="seccionActiva === 'ciudadanos'"
+      (click)="cambiarSeccion('ciudadanos')"
+      [attr.aria-current]="seccionActiva === 'ciudadanos' ? 'page' : null">
+      Directorio
+      <span class="castigo-segment-nav__count">{{ conteoCiudadanos() }}</span>
+    </button>
+    <button type="button" class="castigo-segment-nav__btn"
+      [class.is-active]="seccionActiva === 'sanciones'"
+      (click)="cambiarSeccion('sanciones')"
+      [attr.aria-current]="seccionActiva === 'sanciones' ? 'page' : null">
+      Sanciones y auditoría
+      <span class="castigo-segment-nav__count">{{ historial.length }}</span>
+    </button>
+  </nav>
+
+  <!-- ═══ SECCIÓN CIUDADANOS ═══ -->
+  <section *ngIf="seccionActiva === 'ciudadanos'" class="castigo-mobile-section" aria-labelledby="sec-ciudadanos">
+    <div class="castigo-section-head">
+      <span class="castigo-section-head__bar" aria-hidden="true"></span>
+      <h2 id="sec-ciudadanos" class="castigo-section-head__title">Directorio</h2>
+      <span class="castigo-section-head__caption">{{ ciudadanosFiltrados.length }} visibles</span>
+    </div>
+
+    <div class="castigo-surface-card castigo-surface-card--directory">
+      <div class="castigo-tools-grid">
+        <button type="button" class="civic-btn civic-btn--primary castigo-tools-grid__action" (click)="abrirModalCrearUsuario()">
+          <svg class="castigo-btn-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+          </svg>
+          Nuevo ciudadano
+        </button>
+        <div class="castigo-command-bar__search civic-search castigo-tools-grid__search">
+          <svg class="civic-search__icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+          </svg>
+          <input id="castigo-buscar-ciudadanos" type="search" class="civic-input" [(ngModel)]="busqueda" (ngModelChange)="aplicarFiltros()"
+            placeholder="Buscar por DNI, nombre o email…" aria-label="Buscar ciudadanos" />
+        </div>
+        <div class="castigo-command-bar__meta castigo-tools-grid__meta">
+          <span class="castigo-result-badge">{{ ciudadanosFiltrados.length }} / {{ conteoCiudadanos() }}</span>
+          <button *ngIf="hayFiltrosActivos()" type="button" class="civic-btn civic-btn--secondary civic-btn--sm"
+            (click)="limpiarFiltros()">Limpiar</button>
+        </div>
+        <div class="castigo-command-bar__filters castigo-tools-grid__filters">
+          <div class="castigo-filter-inline">
+            <span class="castigo-filter-inline__label">Estado</span>
+            <div class="civic-pills civic-pills--wrap">
+              <button *ngFor="let f of filtrosEstado" type="button" class="civic-pill civic-pill--sm"
+                [class.is-active]="filtroEstado === f.value"
+                (click)="filtroEstado = f.value; aplicarFiltros()">{{ f.label }}</button>
+            </div>
+          </div>
+          <div class="castigo-filter-inline">
+            <span class="castigo-filter-inline__label">Sanción</span>
+            <div class="civic-pills civic-pills--wrap">
+              <button *ngFor="let f of filtrosNivel" type="button" class="civic-pill civic-pill--sm"
+                [class.is-active]="filtroNivel === f.value"
+                (click)="filtroNivel = f.value; aplicarFiltros()">{{ f.label }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="castigo-surface-card__divider" aria-hidden="true"></div>
+
+      <div class="castigo-citizen-list">
+        <div *ngIf="cargando" class="civic-loading">
+          <div class="civic-loading__spinner" aria-hidden="true"></div>
+          <p class="text-sm text-civic-text-muted">Cargando ciudadanos…</p>
+        </div>
+
+        <div *ngIf="!cargando && errorCarga" class="castigo-empty castigo-empty--error">
+          <svg class="castigo-empty__icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+          </svg>
+          <p class="castigo-empty__title">No se pudieron cargar los datos</p>
+          <p class="castigo-empty__text">{{ errorCarga }}</p>
+          <button type="button" class="civic-btn civic-btn--secondary civic-btn--sm" (click)="cargarDatos()">Reintentar</button>
+        </div>
+
+        <ng-container *ngIf="!cargando && !errorCarga">
+          <ul *ngIf="ciudadanosFiltrados.length > 0" class="castigo-citizen-grid" aria-label="Directorio de ciudadanos">
+            <li *ngFor="let u of ciudadanosFiltrados; trackBy: trackByUsuarioId"
+              class="castigo-citizen-card"
+              [class.castigo-citizen-card--sancion]="nivelUsuario(u) > 0"
+              [class.castigo-citizen-card--blocked]="!accesoPermitidoUsuario(u)"
+              [class.castigo-citizen-card--inactive]="u.estado !== 'ACTIVO'">
+              <div class="castigo-citizen-card__top">
+                <div class="castigo-citizen-card__avatar-wrap"
+                  [class.castigo-citizen-card__avatar-wrap--alert]="nivelUsuario(u) > 0"
+                  [class.castigo-citizen-card__avatar-wrap--danger]="!accesoPermitidoUsuario(u)">
+                  <span class="castigo-citizen-card__avatar">{{ inicialesUsuario(u) }}</span>
+                </div>
+                <div class="castigo-citizen-card__main">
+                  <div class="castigo-citizen-card__title-row">
+                    <p class="castigo-citizen-card__name">{{ nombreUsuario(u) }}</p>
+                    <span [ngClass]="claseBadgeEstado(u.estado)">
+                      <span class="civic-chip__dot" aria-hidden="true"></span>
+                      <span class="civic-chip__label">{{ etiquetaEstado(u.estado) }}</span>
+                    </span>
+                  </div>
+                  <div class="castigo-citizen-card__meta-row">
+                    <svg class="castigo-citizen-card__meta-icon" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm3-7.5h.008v.008H7.5V12Zm0 3h.008v.008H7.5V15Zm0 3h.008v.008H7.5V18Z"/>
+                    </svg>
+                    <span>DNI {{ u.dni }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="castigo-citizen-card__info">
+                <span class="castigo-citizen-card__pill">
+                  <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
+                  </svg>
+                  <span>{{ u.email || 'Sin email registrado' }}</span>
+                </span>
+                <span class="castigo-citizen-card__pill">
+                  <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z"/>
+                  </svg>
+                  <span>{{ u.telefono || 'Sin teléfono' }}</span>
+                </span>
+              </div>
+
+              <div class="castigo-citizen-card__badges">
+                <span [ngClass]="claseBadgeNivel(nivelUsuario(u))">
+                  <span class="civic-chip__level" aria-hidden="true">{{ nivelUsuario(u) }}</span>
+                  <span class="civic-chip__label">{{ etiquetaNivel(nivelUsuario(u)) }}</span>
+                </span>
+                <span class="castigo-access"
+                  [class.castigo-access--ok]="accesoPermitidoUsuario(u)"
+                  [class.castigo-access--blocked]="!accesoPermitidoUsuario(u)">
+                  <span class="castigo-access__dot" aria-hidden="true"></span>
+                  {{ accesoPermitidoUsuario(u) ? 'App permitida' : 'App bloqueada' }}
+                </span>
+              </div>
+
+              <footer class="castigo-citizen-card__toolbar">
+                <button type="button" class="castigo-citizen-card__tool castigo-citizen-card__tool--accent"
+                  (click)="abrirModalEditarUsuario(u)">
+                  <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/>
+                  </svg>
+                  <span>Editar</span>
+                </button>
+                <button type="button" class="castigo-citizen-card__tool"
+                  [class.castigo-citizen-card__tool--danger]="u.estado === 'ACTIVO'"
+                  [class.castigo-citizen-card__tool--info]="u.estado !== 'ACTIVO'"
+                  (click)="toggleEstadoUsuario(u)" [disabled]="guardando">
+                  <svg *ngIf="u.estado === 'ACTIVO'" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636"/>
+                  </svg>
+                  <svg *ngIf="u.estado !== 'ACTIVO'" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                  </svg>
+                  <span>{{ u.estado === 'ACTIVO' ? 'Desactivar' : 'Activar' }}</span>
+                </button>
+                <button type="button" class="castigo-citizen-card__tool castigo-citizen-card__tool--warning"
+                  (click)="abrirModalCastigo(u)">
+                  <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+                  </svg>
+                  <span>Sanción</span>
+                </button>
+              </footer>
+            </li>
+          </ul>
+
+          <div *ngIf="ciudadanosFiltrados.length === 0" class="castigo-empty">
+            <svg class="castigo-empty__icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
+            </svg>
+            <p class="castigo-empty__title">Nadie coincide con la búsqueda</p>
+            <p class="castigo-empty__text">Pruebe otro término o registre un ciudadano nuevo.</p>
+            <button type="button" class="civic-btn civic-btn--primary civic-btn--sm" (click)="abrirModalCrearUsuario()">Registrar ciudadano</button>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SECCIÓN SANCIONES ═══ -->
+  <section *ngIf="seccionActiva === 'sanciones'" class="castigo-mobile-section castigo-mobile-section--sanciones" aria-labelledby="sec-sanciones">
+    <div class="castigo-section-head">
+      <span class="castigo-section-head__bar" aria-hidden="true"></span>
+      <h2 id="sec-sanciones" class="castigo-section-head__title">Sanciones y auditoría</h2>
+    </div>
+
+    <nav class="castigo-segment-nav castigo-segment-nav--sub" aria-label="Vista de sanciones">
+        <button type="button" class="castigo-segment-nav__btn"
+          [class.is-active]="subSeccionSanciones === 'vigentes'"
+          (click)="cambiarSubSeccionSanciones('vigentes')"
+          [attr.aria-current]="subSeccionSanciones === 'vigentes' ? 'true' : null">
+          Sanciones vigentes
+          <span class="castigo-segment-nav__count">{{ sancionesActivasFiltradas.length }}</span>
+        </button>
+        <button type="button" class="castigo-segment-nav__btn"
+          [class.is-active]="subSeccionSanciones === 'auditoria'"
+          (click)="cambiarSubSeccionSanciones('auditoria')"
+          [attr.aria-current]="subSeccionSanciones === 'auditoria' ? 'true' : null">
+          Registro de auditoría
+          <span class="castigo-segment-nav__count">{{ historialFiltrado.length }}</span>
+        </button>
+      </nav>
+
+      <!-- Panel: sanciones vigentes -->
+      <div *ngIf="subSeccionSanciones === 'vigentes'" class="castigo-panel castigo-panel--full castigo-panel--nested">
+        <div class="castigo-panel__toolbar castigo-panel__toolbar--relaxed">
+          <div class="civic-search castigo-panel__search">
+            <svg class="civic-search__icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+            </svg>
+            <input type="search" class="civic-input" [(ngModel)]="busqueda" (ngModelChange)="aplicarFiltros()"
+              placeholder="Buscar por DNI o nombre…" aria-label="Filtrar sanciones vigentes" />
+          </div>
+          <div class="castigo-filter-bar__group">
+            <span class="castigo-filter-bar__label">Nivel</span>
+            <div class="civic-pills civic-pills--wrap">
+              <button *ngFor="let f of filtrosNivel" type="button" class="civic-pill civic-pill--sm"
+                [class.is-active]="filtroNivel === f.value"
+                (click)="filtroNivel = f.value; aplicarFiltros()">{{ f.label }}</button>
+            </div>
+          </div>
+          <button *ngIf="hayFiltrosActivos()" type="button" class="civic-btn civic-btn--secondary civic-btn--sm castigo-panel__clear"
+            (click)="limpiarFiltros()">Limpiar filtros</button>
+          <p class="castigo-panel__result-count">{{ sancionesActivasFiltradas.length }} expedientes</p>
+        </div>
+
+        <div class="castigo-panel__body castigo-panel__body--relaxed">
+          <ul *ngIf="sancionesActivasFiltradas.length > 0" class="castigo-expediente-grid">
+            <li *ngFor="let u of sancionesActivasFiltradas; trackBy: trackByUsuarioId"
+              class="castigo-expediente castigo-expediente--flat"
+              [class.castigo-expediente--n1]="nivelUsuario(u) === 1"
+              [class.castigo-expediente--n2]="nivelUsuario(u) === 2"
+              [class.castigo-expediente--n3]="nivelUsuario(u) === 3">
+              <div class="castigo-expediente__sheet">
+                <header class="castigo-expediente__head">
+                  <div class="castigo-expediente__identity">
+                    <span class="castigo-user-cell__avatar castigo-user-cell__avatar--lg castigo-user-cell__avatar--alert">{{ inicialesUsuario(u) }}</span>
+                    <div class="min-w-0">
+                      <p class="castigo-expediente__name">{{ nombreUsuario(u) }}</p>
+                      <p class="castigo-expediente__meta">DNI {{ u.dni }}</p>
+                    </div>
+                  </div>
+                  <span [ngClass]="claseBadgeNivel(nivelUsuario(u))">
+                    <span class="civic-chip__level" aria-hidden="true">{{ nivelUsuario(u) }}</span>
+                    <span class="civic-chip__label">{{ etiquetaNivel(nivelUsuario(u)) }}</span>
+                  </span>
+                </header>
+                <div class="castigo-expediente__body">
+                  <p class="castigo-expediente__field-label">Motivo registrado</p>
+                  <p class="castigo-expediente__motivo">{{ u.sistemaCastigos?.motivo_ultimo_castigo || 'Sin motivo en el expediente' }}</p>
+                  <p *ngIf="u.sistemaCastigos?.fecha_fin_bloqueo_temporal as fin" class="castigo-expediente__vence">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                    </svg>
+                    Bloqueo hasta {{ formatearFecha(fin) }}
+                  </p>
+                </div>
+                <footer class="castigo-expediente__foot">
+                  <button type="button" class="civic-btn civic-btn--primary civic-btn--sm civic-btn--block"
+                    (click)="abrirModalCastigo(u)">Abrir expediente</button>
+                </footer>
+              </div>
+            </li>
+          </ul>
+          <div *ngIf="!cargando && sancionesActivasFiltradas.length === 0" class="castigo-empty">
+            <svg class="castigo-empty__icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+            </svg>
+            <p class="castigo-empty__title">No hay sanciones vigentes</p>
+            <p class="castigo-empty__text">Ningún expediente coincide con los filtros actuales.</p>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="subSeccionSanciones === 'auditoria'" class="castigo-panel castigo-panel--full castigo-panel--nested">
+        <div class="castigo-panel__toolbar castigo-panel__toolbar--relaxed">
+          <div class="civic-search castigo-panel__search">
+            <svg class="civic-search__icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+            </svg>
+            <input type="search" class="civic-input" [(ngModel)]="busqueda" (ngModelChange)="aplicarFiltros()"
+              placeholder="Buscar por DNI o nombre…" aria-label="Filtrar auditoría" />
+          </div>
+          <div class="castigo-filter-bar__group">
+            <span class="castigo-filter-bar__label">Filtrar por acción</span>
+            <div class="civic-pills">
+              <button *ngFor="let f of filtrosAccion" type="button" class="civic-pill civic-pill--sm"
+                [class.is-active]="filtroAccion === f.value"
+                (click)="filtroAccion = f.value; aplicarFiltros()">{{ f.label }}</button>
+            </div>
+          </div>
+          <button *ngIf="hayFiltrosActivos()" type="button" class="civic-btn civic-btn--secondary civic-btn--sm castigo-panel__clear"
+            (click)="limpiarFiltros()">Limpiar filtros</button>
+          <p class="castigo-panel__result-count">{{ historialFiltrado.length }} registros</p>
+        </div>
+
+        <div class="castigo-panel__body castigo-panel__body--relaxed">
+          <div *ngIf="cargando" class="civic-loading">
+            <div class="civic-loading__spinner" aria-hidden="true"></div>
+            <p class="text-sm text-civic-text-muted">Cargando auditoría…</p>
+          </div>
+
+          <ol *ngIf="!cargando && historialFiltrado.length > 0" class="castigo-timeline castigo-timeline--compact" aria-label="Línea de tiempo de auditoría">
+            <li *ngFor="let h of historialFiltrado; trackBy: trackByHistorialId; let last = last"
+              class="castigo-timeline__item"
+              [class.castigo-timeline__item--last]="last">
+              <div class="castigo-timeline__rail" aria-hidden="true">
+                <time class="castigo-timeline__rail-date">{{ formatearFechaAuditoria(h.recordedAt).fecha }}</time>
+                <span class="castigo-timeline__rail-hora">{{ formatearFechaAuditoria(h.recordedAt).hora }}</span>
+                <span class="castigo-timeline__dot"
+                  [class.castigo-timeline__dot--levantar]="h.action === 'LEVANTAR'"
+                  [class.castigo-timeline__dot--aplicar]="h.action === 'APLICAR'"></span>
+                <span *ngIf="!last" class="castigo-timeline__line"></span>
+              </div>
+              <article class="castigo-timeline__card">
+                <header class="castigo-timeline__head">
+                  <div class="castigo-timeline__who">
+                    <p class="castigo-timeline__name">{{ h.fullName || h.dni }}</p>
+                    <p class="castigo-timeline__meta"><span class="castigo-mono">DNI {{ h.dni }}</span></p>
+                  </div>
+                  <span [ngClass]="claseBadgeAccion(h.action)">
+                    <span class="civic-chip__dot" aria-hidden="true"></span>
+                    <span class="civic-chip__label">{{ accionEtiqueta(h.action) }}</span>
+                  </span>
+                </header>
+
+                <div class="castigo-timeline__transition castigo-timeline__transition--inline">
+                  <span [ngClass]="claseBadgeNivel(h.previousLevel)">
+                    <span class="civic-chip__level" aria-hidden="true">{{ h.previousLevel }}</span>
+                    <span class="civic-chip__label">{{ h.previousLevelLabel }}</span>
+                  </span>
+                  <svg class="civic-chip-flow__arrow" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
+                  </svg>
+                  <span [ngClass]="claseBadgeNivel(h.newLevel)">
+                    <span class="civic-chip__level" aria-hidden="true">{{ h.newLevel }}</span>
+                    <span class="civic-chip__label">{{ h.newLevelLabel }}</span>
+                  </span>
+                </div>
+
+                <p *ngIf="h.reason" class="castigo-timeline__motivo">{{ h.reason }}</p>
+
+                <footer class="castigo-timeline__footer">
+                  <button type="button" class="civic-btn civic-btn--secondary civic-btn--sm"
+                    (click)="gestionarDesdeHistorial(h)">Ver expediente</button>
+                </footer>
+              </article>
+            </li>
+          </ol>
+
+          <div *ngIf="!cargando && historialFiltrado.length === 0" class="castigo-empty">
+            <svg class="castigo-empty__icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+            </svg>
+            <p class="castigo-empty__title">Sin registros</p>
+            <p class="castigo-empty__text">Las acciones de moderación aparecerán aquí.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+</div>
+
+<!-- Modal: crear / editar ciudadano -->
+<div *ngIf="modalUsuarioAbierto" ngSkipHydration
+     class="civic-modal-backdrop castigo-modal-backdrop"
+     role="dialog" aria-modal="true" aria-labelledby="modal-usuario-title"
+     (click)="cerrarModalUsuario()">
+  <div class="civic-modal civic-modal--md castigo-modal" (click)="$event.stopPropagation()">
+    <header class="castigo-modal__header castigo-modal__header--form">
+      <div>
+        <p class="castigo-modal__eyebrow">{{ modoUsuario === 'crear' ? 'Alta de cuenta' : 'Edición de cuenta' }}</p>
+        <h2 id="modal-usuario-title" class="castigo-modal__title">
+          {{ modoUsuario === 'crear' ? 'Nuevo ciudadano' : 'Editar ciudadano' }}
+        </h2>
+        <p *ngIf="modoUsuario === 'editar' && usuarioSeleccionado" class="castigo-modal__subtitle">
+          <span class="castigo-mono">DNI {{ usuarioSeleccionado.dni }}</span>
+        </p>
+      </div>
+      <button type="button" class="civic-modal__close" (click)="$event.stopPropagation(); cerrarModalUsuario()" aria-label="Cerrar">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </header>
+    <div class="castigo-modal__body">
+      <fieldset class="castigo-form-section">
+        <legend class="castigo-form-section__legend">Identidad</legend>
+        <div class="castigo-form-grid">
+          <div *ngIf="modoUsuario === 'crear'" class="castigo-field" [class.castigo-field--invalid]="tieneErrorUsuario('dni')">
+            <label class="civic-field-label" for="usr-dni">DNI <span class="castigo-field__required" aria-hidden="true">*</span></label>
+            <input id="usr-dni" class="civic-input" maxlength="8"
+              [ngModel]="formUsuario.dni"
+              (ngModelChange)="onDniInput($event)"
+              (blur)="validarCampoUsuario('dni')"
+              placeholder="8 dígitos" inputmode="numeric" autocomplete="off"
+              [attr.aria-invalid]="tieneErrorUsuario('dni')"
+              [attr.aria-describedby]="tieneErrorUsuario('dni') ? 'usr-dni-error' : null" />
+            <p *ngIf="tieneErrorUsuario('dni')" id="usr-dni-error" class="castigo-field__error" role="alert">{{ erroresUsuario['dni'] }}</p>
+          </div>
+          <div class="castigo-field" [class.castigo-field--invalid]="tieneErrorUsuario('nombres')">
+            <label class="civic-field-label" for="usr-nombres">Nombres <span class="castigo-field__required" aria-hidden="true">*</span></label>
+            <input id="usr-nombres" class="civic-input" maxlength="80"
+              [(ngModel)]="formUsuario.nombres"
+              (ngModelChange)="validarCampoUsuario('nombres')"
+              (blur)="validarCampoUsuario('nombres')"
+              autocomplete="given-name"
+              [attr.aria-invalid]="tieneErrorUsuario('nombres')"
+              [attr.aria-describedby]="tieneErrorUsuario('nombres') ? 'usr-nombres-error' : null" />
+            <p *ngIf="tieneErrorUsuario('nombres')" id="usr-nombres-error" class="castigo-field__error" role="alert">{{ erroresUsuario['nombres'] }}</p>
+          </div>
+          <div class="castigo-field" [class.castigo-field--invalid]="tieneErrorUsuario('apellidos')">
+            <label class="civic-field-label" for="usr-apellidos">Apellidos <span class="castigo-field__required" aria-hidden="true">*</span></label>
+            <input id="usr-apellidos" class="civic-input" maxlength="80"
+              [(ngModel)]="formUsuario.apellidos"
+              (ngModelChange)="validarCampoUsuario('apellidos')"
+              (blur)="validarCampoUsuario('apellidos')"
+              autocomplete="family-name"
+              [attr.aria-invalid]="tieneErrorUsuario('apellidos')"
+              [attr.aria-describedby]="tieneErrorUsuario('apellidos') ? 'usr-apellidos-error' : null" />
+            <p *ngIf="tieneErrorUsuario('apellidos')" id="usr-apellidos-error" class="castigo-field__error" role="alert">{{ erroresUsuario['apellidos'] }}</p>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset *ngIf="modoUsuario === 'crear'" class="castigo-form-section">
+        <legend class="castigo-form-section__legend">Acceso a la app</legend>
+        <div class="castigo-form-grid">
+          <div class="castigo-field" [class.castigo-field--invalid]="tieneErrorUsuario('password')">
+            <label class="civic-field-label" for="usr-pass">Contraseña <span class="castigo-field__required" aria-hidden="true">*</span></label>
+            <input id="usr-pass" type="password" class="civic-input" maxlength="128"
+              [(ngModel)]="formUsuario.password"
+              (ngModelChange)="validarCampoUsuario('password')"
+              (blur)="validarCampoUsuario('password')"
+              placeholder="Mínimo 6 caracteres" autocomplete="new-password"
+              [attr.aria-invalid]="tieneErrorUsuario('password')"
+              [attr.aria-describedby]="tieneErrorUsuario('password') ? 'usr-pass-error usr-pass-hint' : 'usr-pass-hint'" />
+            <p id="usr-pass-hint" class="castigo-field__hint">El ciudadano usará esta contraseña para ingresar a la app móvil.</p>
+            <p *ngIf="tieneErrorUsuario('password')" id="usr-pass-error" class="castigo-field__error" role="alert">{{ erroresUsuario['password'] }}</p>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="castigo-form-section">
+        <legend class="castigo-form-section__legend">Contacto <span class="castigo-form-section__optional">(opcional)</span></legend>
+        <div class="castigo-form-grid">
+          <div class="castigo-field" [class.castigo-field--invalid]="tieneErrorUsuario('email')">
+            <label class="civic-field-label" for="usr-email">Email</label>
+            <input id="usr-email" type="email" class="civic-input" maxlength="120"
+              [(ngModel)]="formUsuario.email"
+              (ngModelChange)="validarCampoUsuario('email')"
+              (blur)="validarCampoUsuario('email')"
+              autocomplete="email"
+              placeholder="correo@ejemplo.com"
+              [attr.aria-invalid]="tieneErrorUsuario('email')"
+              [attr.aria-describedby]="tieneErrorUsuario('email') ? 'usr-email-error' : null" />
+            <p *ngIf="tieneErrorUsuario('email')" id="usr-email-error" class="castigo-field__error" role="alert">{{ erroresUsuario['email'] }}</p>
+          </div>
+          <div class="castigo-field" [class.castigo-field--invalid]="tieneErrorUsuario('telefono')">
+            <label class="civic-field-label" for="usr-tel">Teléfono</label>
+            <input id="usr-tel" class="civic-input" maxlength="20"
+              [ngModel]="formUsuario.telefono"
+              (ngModelChange)="onTelefonoInput($event)"
+              (blur)="validarCampoUsuario('telefono')"
+              inputmode="tel" autocomplete="tel"
+              placeholder="Ej. 987 654 321"
+              [attr.aria-invalid]="tieneErrorUsuario('telefono')"
+              [attr.aria-describedby]="tieneErrorUsuario('telefono') ? 'usr-tel-error' : null" />
+            <p *ngIf="tieneErrorUsuario('telefono')" id="usr-tel-error" class="castigo-field__error" role="alert">{{ erroresUsuario['telefono'] }}</p>
+          </div>
+        </div>
+      </fieldset>
+
+      <p *ngIf="errorModal" class="castigo-alert castigo-alert--error">{{ errorModal }}</p>
+    </div>
+    <footer class="castigo-modal__footer">
+      <button type="button" class="civic-btn civic-btn--secondary" (click)="cerrarModalUsuario()" [disabled]="guardando">Cancelar</button>
+      <button type="button" class="civic-btn civic-btn--primary" (click)="guardarUsuario()"
+        [disabled]="guardando || !formularioUsuarioValido">
+        {{ guardando ? 'Guardando…' : (modoUsuario === 'crear' ? 'Registrar ciudadano' : 'Guardar cambios') }}
+      </button>
+    </footer>
+  </div>
+</div>
+
+<!-- Modal: sanción -->
+<div *ngIf="modalCastigoAbierto" ngSkipHydration
+     class="civic-modal-backdrop castigo-modal-backdrop"
+     role="dialog" aria-modal="true" aria-labelledby="castigo-modal-title"
+     (click)="cerrarModalCastigo()">
+  <div class="civic-modal civic-modal--lg castigo-modal castigo-modal--castigo" (click)="$event.stopPropagation()">
+
+    <header class="castigo-modal__header castigo-modal__header--castigo" *ngIf="usuarioSeleccionado && castigoActual">
+      <div class="castigo-modal__identity">
+        <span class="castigo-user-cell__avatar castigo-user-cell__avatar--lg">{{ inicialesUsuario(usuarioSeleccionado) }}</span>
+        <div class="min-w-0">
+          <p class="castigo-modal__eyebrow">Expediente de moderación</p>
+          <h2 id="castigo-modal-title" class="castigo-modal__title">{{ nombreUsuario(usuarioSeleccionado) }}</h2>
+          <p class="castigo-modal__subtitle"><span class="castigo-mono">DNI {{ usuarioSeleccionado.dni }}</span></p>
+        </div>
+      </div>
+      <button type="button" class="civic-modal__close" (click)="$event.stopPropagation(); cerrarModalCastigo()" aria-label="Cerrar">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="castigo-modal__body custom-scrollbar" *ngIf="castigoActual">
+      <div *ngIf="mensajeExito" class="castigo-alert castigo-alert--success">{{ mensajeExito }}</div>
+      <div *ngIf="avisoHistorialModal" class="castigo-alert castigo-alert--warning">{{ avisoHistorialModal }}</div>
+
+      <div class="castigo-modal__split">
+        <aside class="castigo-modal__aside" aria-label="Estado del expediente">
+          <div class="castigo-aside-card">
+            <p class="castigo-aside-card__label">Estado actual</p>
+            <span [ngClass]="claseBadgeNivel(castigoActual.nivelCastigo)" class="castigo-aside-card__chip">
+              <span class="civic-chip__level" aria-hidden="true">{{ castigoActual.nivelCastigo }}</span>
+              <span class="civic-chip__label">{{ castigoActual.nivelEtiqueta }}</span>
+            </span>
+            <span class="castigo-access castigo-access--sm castigo-aside-card__access"
+              [class.castigo-access--ok]="castigoActual.accesoPermitido"
+              [class.castigo-access--blocked]="!castigoActual.accesoPermitido">
+              <span class="castigo-access__dot" aria-hidden="true"></span>
+              {{ castigoActual.accesoPermitido ? 'Acceso permitido' : 'Acceso bloqueado' }}
+            </span>
+          </div>
+
+          <div class="castigo-rail-wrap castigo-rail-wrap--stack">
+            <p class="castigo-rail-wrap__label">Escala progresiva</p>
+            <ol class="castigo-rail castigo-rail--vertical" aria-label="Niveles de sanción">
+              <li *ngFor="let n of nivelesEscalera" class="castigo-rail__step"
+                [class.is-done]="nivelEscaleraEstado(n.codigo) === 'done'"
+                [class.is-current]="nivelEscaleraEstado(n.codigo) === 'current'"
+                [class.is-next]="castigoActual.proximoNivel === n.codigo && puedeEscalar()">
+                <span class="castigo-rail__num">{{ n.codigo }}</span>
+                <div class="castigo-rail__copy">
+                  <span class="castigo-rail__label">{{ n.titulo }}</span>
+                  <span class="castigo-rail__desc">{{ n.descripcion }}</span>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </aside>
+
+        <div class="castigo-modal__main">
+          <div class="castigo-segment" role="tablist" aria-label="Acción de moderación">
+            <button type="button" role="tab" class="castigo-segment__btn"
+              [class.is-active]="modalAccion === 'escalar'" [disabled]="!puedeEscalar()"
+              [attr.aria-selected]="modalAccion === 'escalar'"
+              (click)="cambiarAccionModal('escalar')">
+              Escalar sanción
+              <span *ngIf="castigoActual.proximoNivelEtiqueta" class="castigo-segment__hint">→ {{ castigoActual.proximoNivelEtiqueta }}</span>
+            </button>
+            <button type="button" role="tab" class="castigo-segment__btn"
+              [class.is-active]="modalAccion === 'levantar'" [disabled]="!puedeLevantar()"
+              [attr.aria-selected]="modalAccion === 'levantar'"
+              (click)="cambiarAccionModal('levantar')">Levantar sanción</button>
+          </div>
+
+          <div *ngIf="modalAccion === 'escalar' && puedeEscalar()" class="castigo-form">
+            <p *ngIf="nivelProximoInfo() as proximo" class="castigo-form__impact">
+              <span [ngClass]="claseBadgeNivel(castigoActual.nivelCastigo)">
+                <span class="civic-chip__level" aria-hidden="true">{{ castigoActual.nivelCastigo }}</span>
+                <span class="civic-chip__label">{{ castigoActual.nivelEtiqueta }}</span>
+              </span>
+              <svg class="civic-chip-flow__arrow" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
+              </svg>
+              <span [ngClass]="claseBadgeNivel(proximo.codigo)">
+                <span class="civic-chip__level" aria-hidden="true">{{ proximo.codigo }}</span>
+                <span class="civic-chip__label">{{ proximo.titulo }}</span>
+              </span>
+              <span class="castigo-form__impact-desc">{{ proximo.consecuencia }}</span>
+            </p>
+            <div class="castigo-field">
+              <label class="civic-field-label" for="castigo-motivo">Motivo de la sanción</label>
+              <textarea id="castigo-motivo" rows="3" class="civic-input castigo-field__textarea"
+                [(ngModel)]="formMotivo" maxlength="500" placeholder="Describa la falta cometida…"></textarea>
+              <p class="castigo-field__hint">{{ formMotivo.trim().length }} / 500 caracteres · mínimo 10</p>
+            </div>
+            <div *ngIf="castigoActual.proximoNivel === 2" class="castigo-field">
+              <label class="civic-field-label">Duración del bloqueo</label>
+              <div class="castigo-duration">
+                <button *ngFor="let p of horasPresets" type="button" class="castigo-duration__chip"
+                  [class.is-active]="formHorasBloqueo === p.horas" (click)="seleccionarHorasPreset(p.horas)">{{ p.etiqueta }}</button>
+                <label class="castigo-duration__inline">
+                  <input type="number" min="1" max="720" class="civic-input castigo-duration__input" [(ngModel)]="formHorasBloqueo" aria-label="Horas personalizadas" />
+                  <span>horas</span>
+                </label>
+              </div>
+              <p class="castigo-field__hint">Fin estimado: {{ fechaFinBloqueoEstimada() }}</p>
+            </div>
+          </div>
+
+          <div *ngIf="modalAccion === 'escalar' && !puedeEscalar()" class="castigo-empty-state">
+            <p class="castigo-empty-state__title">No se puede escalar ahora</p>
+            <p class="castigo-empty-state__text">
+              {{ castigoActual.nivelCastigo >= 3 ? 'El ciudadano tiene bloqueo permanente. Use «Levantar sanción».' : 'Hay un bloqueo temporal vigente.' }}
+            </p>
+          </div>
+
+          <div *ngIf="modalAccion === 'levantar' && puedeLevantar()" class="castigo-empty-state castigo-empty-state--lift">
+            <p class="castigo-empty-state__title">Reiniciar expediente</p>
+            <p class="castigo-empty-state__text">Se eliminará <strong>{{ castigoActual.nivelEtiqueta }}</strong> y el ciudadano volverá a estado sin sanción.</p>
+          </div>
+
+          <div *ngIf="modalAccion === 'levantar' && !puedeLevantar()" class="castigo-empty-state">
+            <p class="castigo-empty-state__title">Sin sanción activa</p>
+            <p class="castigo-empty-state__text">Este ciudadano no tiene sanciones que levantar.</p>
+          </div>
+
+          <p *ngIf="errorModal" class="castigo-alert castigo-alert--error">{{ errorModal }}</p>
+
+          <div class="castigo-history">
+            <button type="button" class="castigo-history__toggle" (click)="toggleHistorialModal()" [attr.aria-expanded]="historialModalAbierto">
+              Historial del expediente
+              <span class="castigo-history__count">{{ historialUsuario.length }}</span>
+              <svg class="castigo-history__chevron" [class.is-open]="historialModalAbierto" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"/>
+              </svg>
+            </button>
+            <ol *ngIf="historialModalAbierto && historialUsuario.length > 0" class="castigo-history-timeline" aria-label="Historial del ciudadano">
+              <li *ngFor="let h of historialUsuario; trackBy: trackByHistorialId; let last = last"
+                class="castigo-history-timeline__item"
+                [class.castigo-history-timeline__item--last]="last">
+                <div class="castigo-history-timeline__rail" aria-hidden="true">
+                  <span class="castigo-history-timeline__dot"
+                    [class.castigo-history-timeline__dot--levantar]="h.action === 'LEVANTAR'"></span>
+                  <span *ngIf="!last" class="castigo-history-timeline__line"></span>
+                </div>
+                <div class="castigo-history-timeline__content">
+                  <div class="castigo-history-timeline__row">
+                    <time class="castigo-history-timeline__date">{{ formatearFecha(h.recordedAt) }}</time>
+                    <span [ngClass]="claseBadgeAccion(h.action)">
+                      <span class="civic-chip__dot" aria-hidden="true"></span>
+                      <span class="civic-chip__label">{{ accionEtiqueta(h.action) }}</span>
+                    </span>
+                  </div>
+                  <p class="castigo-history-timeline__levels">{{ h.previousLevelLabel }} → {{ h.newLevelLabel }}</p>
+                  <p *ngIf="h.reason" class="castigo-history-timeline__motivo">{{ h.reason }}</p>
+                </div>
+              </li>
+            </ol>
+            <p *ngIf="historialModalAbierto && historialUsuario.length === 0" class="castigo-history__empty">Sin movimientos previos en este expediente.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="castigo-modal__footer" *ngIf="castigoActual">
+      <button type="button" class="civic-btn civic-btn--secondary" (click)="cerrarModalCastigo()" [disabled]="guardando">Cancelar</button>
+      <button *ngIf="modalAccion === 'escalar' && puedeEscalar()" type="button" class="civic-btn civic-btn--primary"
+        (click)="ejecutarAccionModal()" [disabled]="guardando || !puedeConfirmarEscalar()">
+        {{ guardando ? 'Procesando…' : textoBotonConfirmar() }}
+      </button>
+      <button *ngIf="modalAccion === 'levantar' && puedeLevantar()" type="button" class="civic-btn civic-btn--danger"
+        (click)="ejecutarAccionModal()" [disabled]="guardando">
+        {{ guardando ? 'Procesando…' : 'Confirmar levantamiento' }}
+      </button>
+    </footer>
+  </div>
+</div>
+
+<!-- Modal: confirmación -->
+<div *ngIf="modalConfirmacion" ngSkipHydration
+     class="civic-modal-backdrop castigo-modal-backdrop"
+     role="alertdialog" aria-modal="true" aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-desc"
+     (click)="cerrarConfirmacion()">
+  <div class="civic-modal civic-modal--sm castigo-confirm-modal" (click)="$event.stopPropagation()">
+    <header class="castigo-confirm-modal__header">
+      <div class="castigo-confirm-modal__icon"
+        [class.castigo-confirm-modal__icon--danger]="modalConfirmacion.peligro"
+        aria-hidden="true">
+        <svg *ngIf="modalConfirmacion.peligro" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+        </svg>
+        <svg *ngIf="!modalConfirmacion.peligro" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+        </svg>
+      </div>
+      <div>
+        <h2 id="confirm-modal-title" class="castigo-confirm-modal__title">{{ modalConfirmacion.titulo }}</h2>
+        <p id="confirm-modal-desc" class="castigo-confirm-modal__text">{{ modalConfirmacion.mensaje }}</p>
+      </div>
+    </header>
+    <footer class="castigo-confirm-modal__footer">
+      <button type="button" class="civic-btn civic-btn--secondary" (click)="cerrarConfirmacion()">Cancelar</button>
+      <button type="button" class="civic-btn"
+        [class.civic-btn--primary]="!modalConfirmacion.peligro"
+        [class.civic-btn--danger]="modalConfirmacion.peligro"
+        (click)="confirmarAccion()">{{ modalConfirmacion.confirmarLabel }}</button>
+    </footer>
+  </div>
+</div>

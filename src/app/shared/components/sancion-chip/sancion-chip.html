@@ -1,0 +1,8 @@
+<span
+  class="sancion-chip"
+  [class.sancion-chip--sm]="size === 'sm'"
+  [attr.data-nivel]="nivelNorm"
+  [attr.title]="texto">
+  <span class="sancion-chip__mark" aria-hidden="true">{{ nivelNorm }}</span>
+  <span class="sancion-chip__label">{{ texto }}</span>
+</span>

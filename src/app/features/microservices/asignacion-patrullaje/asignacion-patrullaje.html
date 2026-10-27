@@ -1,0 +1,865 @@
+<div class="civic-page">
+
+  <!-- ══ TOAST ══════════════════════════════════════════════════════════════ -->
+  @if (toast) {
+    <div class="civic-toast-overlay" (click)="cerrarToast()">
+      <div class="civic-toast-card"
+           (click)="$event.stopPropagation()"
+           [class.civic-toast-card--success]="toast.tipo === 'exito'"
+           [class.civic-toast-card--error]="toast.tipo === 'error'"
+           [class.civic-toast-card--info]="toast.tipo === 'info'">
+        <div class="civic-toast-card__icon">
+          @if (toast.tipo === 'exito') { ✅ }
+          @if (toast.tipo === 'error') { ❌ }
+          @if (toast.tipo === 'info')  { ℹ️ }
+        </div>
+        <p class="civic-toast-card__title">
+          @if (toast.tipo === 'exito') { ¡Operación exitosa! }
+          @if (toast.tipo === 'error') { Ocurrió un error }
+          @if (toast.tipo === 'info')  { Aviso }
+        </p>
+        <p class="civic-toast-card__body">{{ toast.mensaje }}</p>
+        <button type="button" (click)="cerrarToast()" class="civic-toast-card__btn">Entendido</button>
+      </div>
+    </div>
+  }
+
+  <!-- ══ HEADER ═════════════════════════════════════════════════════════════ -->
+  <header class="patrol-header">
+    <div class="patrol-header__left">
+      <div class="patrol-header__icon-wrap">
+        <svg class="patrol-header__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
+                   M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2
+                   m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+        </svg>
+      </div>
+      <div>
+        <p class="patrol-header__eyebrow">Gestión operativa del sistema</p>
+        <h1 class="patrol-header__title">Asignación de Patrullaje</h1>
+        <p class="patrol-header__lead">Gestión de turnos y asignaciones de recursos por entidad</p>
+      </div>
+    </div>
+
+    <div class="patrol-header__actions">
+      <button type="button" *ngIf="puedeExportar"
+              (click)="exportarExcel()"
+              [disabled]="cargando || exportando || subasignacionesFiltradas.length === 0"
+              class="civic-btn civic-btn--secondary">
+        <svg *ngIf="!exportando" class="civic-btn__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        <svg *ngIf="exportando" class="civic-btn__icon animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        {{ exportando ? 'Generando…' : 'Excel' }}
+      </button>
+      <button type="button" *ngIf="puedeExportar"
+              (click)="exportarPdf()"
+              [disabled]="cargando || exportando || subasignacionesFiltradas.length === 0"
+              class="civic-btn civic-btn--secondary">
+        <svg *ngIf="!exportando" class="civic-btn__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414
+                   A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+        </svg>
+        <svg *ngIf="exportando" class="civic-btn__icon animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        {{ exportando ? 'Generando…' : 'PDF' }}
+      </button>
+      @if (puedeCrear) {
+        <button type="button" (click)="abrirCrear()" class="civic-btn civic-btn--primary">
+          <svg class="civic-btn__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+          </svg>
+          Nueva asignación
+        </button>
+      }
+    </div>
+  </header>
+
+  <!-- ══ KPI CARDS ══════════════════════════════════════════════════════════ -->
+  <section class="patrol-kpi-grid">
+
+    <button type="button" class="patrol-kpi patrol-kpi--neutral"
+            [class.patrol-kpi--active-filter]="filtroActivo === 'TODOS'"
+            (click)="seleccionarFiltro('TODOS')">
+      <div class="patrol-kpi__icon-wrap patrol-kpi__icon-wrap--slate">
+        <svg class="patrol-kpi__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+        </svg>
+      </div>
+      <div class="patrol-kpi__body">
+        <p class="patrol-kpi__label">Total</p>
+        <p class="patrol-kpi__value">{{ subasignaciones.length }}</p>
+        <p class="patrol-kpi__sub patrol-kpi__sub--success">↑ {{ contarPorEstado('ACTIVA') }} activas</p>
+      </div>
+    </button>
+
+    <button type="button" class="patrol-kpi patrol-kpi--success"
+            [class.patrol-kpi--active-filter]="filtroActivo === 'ACTIVA'"
+            (click)="seleccionarFiltro('ACTIVA')">
+      <div class="patrol-kpi__icon-wrap patrol-kpi__icon-wrap--success">
+        <span class="patrol-kpi__pulse"></span>
+      </div>
+      <div class="patrol-kpi__body">
+        <p class="patrol-kpi__label patrol-kpi__label--success">Activas</p>
+        <p class="patrol-kpi__value patrol-kpi__value--success">{{ contarPorEstado('ACTIVA') }}</p>
+        <p class="patrol-kpi__sub">
+          {{ subasignaciones.length ? (contarPorEstado('ACTIVA') * 100 / subasignaciones.length | number:'1.0-0') : 0 }}% del total
+        </p>
+      </div>
+    </button>
+
+    <button type="button" class="patrol-kpi patrol-kpi--info"
+            [class.patrol-kpi--active-filter]="filtroActivo === 'FINALIZADA'"
+            (click)="seleccionarFiltro('FINALIZADA')">
+      <div class="patrol-kpi__icon-wrap patrol-kpi__icon-wrap--primary">
+        <svg class="patrol-kpi__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+      <div class="patrol-kpi__body">
+        <p class="patrol-kpi__label patrol-kpi__label--primary">Finalizadas</p>
+        <p class="patrol-kpi__value patrol-kpi__value--primary">{{ contarPorEstado('FINALIZADA') }}</p>
+        <p class="patrol-kpi__sub">
+          {{ subasignaciones.length ? (contarPorEstado('FINALIZADA') * 100 / subasignaciones.length | number:'1.0-0') : 0 }}% del total
+        </p>
+      </div>
+    </button>
+
+    <button type="button" class="patrol-kpi patrol-kpi--alert"
+            [class.patrol-kpi--active-filter]="filtroActivo === 'CANCELADA'"
+            (click)="seleccionarFiltro('CANCELADA')">
+      <div class="patrol-kpi__icon-wrap patrol-kpi__icon-wrap--alert">
+        <svg class="patrol-kpi__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </div>
+      <div class="patrol-kpi__body">
+        <p class="patrol-kpi__label patrol-kpi__label--alert">Canceladas</p>
+        <p class="patrol-kpi__value patrol-kpi__value--alert">{{ contarPorEstado('CANCELADA') }}</p>
+        <p class="patrol-kpi__sub">
+          {{ subasignaciones.length ? (contarPorEstado('CANCELADA') * 100 / subasignaciones.length | number:'1.0-0') : 0 }}% del total
+        </p>
+      </div>
+    </button>
+
+    <!-- KPI GPS -->
+    <button type="button"
+            class="patrol-kpi patrol-kpi--geo"
+            [class.patrol-kpi--active-filter]="vistaActiva === 'mapa'"
+            (click)="cambiarVista('mapa')">
+      <div class="patrol-kpi__icon-wrap patrol-kpi__icon-wrap--geo">
+        <svg class="patrol-kpi__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      <div class="patrol-kpi__body">
+        <p class="patrol-kpi__label patrol-kpi__label--geo">Con GPS</p>
+        <p class="patrol-kpi__value patrol-kpi__value--geo">{{ conGpsCount }}</p>
+        <p class="patrol-kpi__sub">Ver en mapa →</p>
+      </div>
+    </button>
+
+  </section>
+
+  <!-- ══ TABS LISTA / MAPA ═══════════════════════════════════════════════════ -->
+  <div class="patrol-view-tabs">
+    <button type="button"
+            class="patrol-view-tab"
+            [class.patrol-view-tab--active]="vistaActiva === 'lista'"
+            (click)="cambiarVista('lista')">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+      </svg>
+      Lista
+    </button>
+    <button type="button"
+            class="patrol-view-tab patrol-view-tab--map"
+            [class.patrol-view-tab--active]="vistaActiva === 'mapa'"
+            (click)="cambiarVista('mapa')">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+      </svg>
+      Mapa en tiempo real
+      @if (conGpsCount > 0) {
+        <span class="patrol-view-tab__badge">{{ conGpsCount }}</span>
+      }
+    </button>
+  </div>
+
+  <!-- ══ VISTA LISTA ═════════════════════════════════════════════════════════ -->
+  @if (vistaActiva === 'lista') {
+
+    <!-- Filtros -->
+    <section class="patrol-filters">
+      <div class="patrol-filters__search">
+        <svg class="patrol-filters__search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+        </svg>
+        <input type="text"
+               [(ngModel)]="busqueda"
+               (ngModelChange)="aplicarFiltros()"
+               placeholder="Buscar por recurso, entidad, turno, responsable…"
+               class="patrol-filters__input" />
+      </div>
+      <div class="patrol-filters__tabs">
+        <button type="button" (click)="seleccionarFiltro('TODOS')" class="patrol-tab"
+                [class.patrol-tab--active]="filtroActivo === 'TODOS'">
+          Todos <span class="patrol-tab__count">{{ subasignaciones.length }}</span>
+        </button>
+        <button type="button" (click)="seleccionarFiltro('ACTIVA')" class="patrol-tab patrol-tab--success"
+                [class.patrol-tab--active]="filtroActivo === 'ACTIVA'">
+          🟢 Activa <span class="patrol-tab__count">{{ contarPorEstado('ACTIVA') }}</span>
+        </button>
+        <button type="button" (click)="seleccionarFiltro('FINALIZADA')" class="patrol-tab patrol-tab--primary"
+                [class.patrol-tab--active]="filtroActivo === 'FINALIZADA'">
+          ✓ Finalizada <span class="patrol-tab__count">{{ contarPorEstado('FINALIZADA') }}</span>
+        </button>
+        <button type="button" (click)="seleccionarFiltro('CANCELADA')" class="patrol-tab patrol-tab--alert"
+                [class.patrol-tab--active]="filtroActivo === 'CANCELADA'">
+          ✕ Cancelada <span class="patrol-tab__count">{{ contarPorEstado('CANCELADA') }}</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Tabla -->
+    <section class="civic-table-wrap">
+      @if (cargando) {
+        <div class="civic-loading">
+          <div class="civic-loading__spinner" aria-hidden="true"></div>
+          <p class="civic-loading__text">Cargando asignaciones de patrullaje…</p>
+        </div>
+      } @else if (errorCarga) {
+        <div class="patrol-error-banner">
+          <div class="patrol-error-banner__icon">⚠️</div>
+          <div>
+            <p class="patrol-error-banner__title">No se pudieron cargar los datos</p>
+            <p class="patrol-error-banner__body">{{ errorCarga }}</p>
+          </div>
+          <button type="button" (click)="cargarDatos()" class="civic-btn civic-btn--secondary">Reintentar</button>
+        </div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="patrol-table">
+            <thead>
+              <tr>
+                <th>Recurso</th>
+                <th>Entidad destino</th>
+                <th>Turno</th>
+                <th>Asignado por</th>
+                <th>Fecha inicio</th>
+                <th>Fecha fin</th>
+                <th class="text-center">GPS</th>
+                <th>Estado</th>
+                <th class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of subasignacionesFiltradas; track trackById($index, s)) {
+                <tr class="patrol-table__row">
+                  <td class="patrol-table__cell">
+                    <span class="patrol-table__resource-tag">
+                      {{ obtenerIdentificadorRecurso(s.resourceId) }}
+                    </span>
+                  </td>
+                  <td class="patrol-table__cell">
+                    <p class="patrol-table__entity">
+                      {{ obtenerRazonSocialEntidad(s.targetEntityId) }}
+                    </p>
+                  </td>
+                  <td class="patrol-table__cell">
+                    <span class="civic-badge" [ngClass]="obtenerClaseTurno(s.shift)">
+                      {{ formatear(s.shift) }}
+                    </span>
+                  </td>
+                  <td class="patrol-table__cell">
+                    <p class="patrol-table__meta">{{ (s.assignedBy) || '—' }}</p>
+                  </td>
+                  <td class="patrol-table__cell">
+                    <p class="patrol-table__date">{{ formatearFecha(s.startDate) }}</p>
+                  </td>
+                  <td class="patrol-table__cell">
+                    <p class="patrol-table__date">{{ formatearFecha(s.endDate) }}</p>
+                  </td>
+                  <!-- Indicador GPS -->
+                  <td class="patrol-table__cell text-center">
+                    @if (s.latitude != null && s.longitude != null) {
+                      <span class="patrol-gps-dot patrol-gps-dot--on" title="{{ s.latitude | number:'1.5-5' }}, {{ s.longitude | number:'1.5-5' }}">
+                        📍
+                      </span>
+                    } @else {
+                      <span class="patrol-gps-dot patrol-gps-dot--off" title="Sin ubicación GPS">—</span>
+                    }
+                  </td>
+                  <td class="patrol-table__cell">
+                    <span class="civic-badge" [ngClass]="obtenerClaseEstado(s.status)">
+                      {{ formatear(s.status) }}
+                    </span>
+                  </td>
+                  <td class="patrol-table__cell patrol-table__cell--actions">
+                    <button type="button" (click)="abrirVer(s)" class="patrol-action-btn" title="Ver detalle">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                      </svg>
+                    </button>
+                    @if (puedeCrear && s.status === 'ACTIVA') {
+                      <button type="button" (click)="abrirEditar(s)"
+                              class="patrol-action-btn patrol-action-btn--edit" title="Editar">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5
+                                   m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+              @if (subasignacionesFiltradas.length === 0) {
+                <tr>
+                  <td colspan="9" class="patrol-table__empty">
+                    <div class="patrol-empty">
+                      <div class="patrol-empty__icon">📋</div>
+                      <p class="patrol-empty__title">No se encontraron asignaciones</p>
+                      <p class="patrol-empty__lead">Prueba con otros términos de búsqueda o ajusta los filtros.</p>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+  }<!-- /vistaActiva === lista -->
+
+  <!-- ══ VISTA MAPA EN TIEMPO REAL ═══════════════════════════════════════════ -->
+  @if (vistaActiva === 'mapa') {
+    <section class="patrol-map-section">
+
+      <div class="patrol-map-section__header">
+        <div class="patrol-map-section__title-wrap">
+          <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+          </svg>
+          <div>
+            <h3 class="patrol-map-section__title">Patrulleros en tiempo real</h3>
+            <p class="patrol-map-section__sub">Unidades activas con ubicación GPS registrada · Click en marcador para ver detalle</p>
+          </div>
+        </div>
+        <div class="patrol-map-section__legend">
+          <span class="patrol-legend-item">
+            <span class="patrol-legend-dot" style="background:#d97706"></span> Día
+          </span>
+          <span class="patrol-legend-item">
+            <span class="patrol-legend-dot" style="background:#ea580c"></span> Tarde
+          </span>
+          <span class="patrol-legend-item">
+            <span class="patrol-legend-dot" style="background:#4f46e5"></span> Noche
+          </span>
+        </div>
+      </div>
+
+      @if (cargando) {
+        <div class="patrol-map-loading">
+          <div class="civic-loading__spinner"></div>
+          <p>Cargando datos…</p>
+        </div>
+      } @else {
+        <app-geo-patrol-map
+          [subasignaciones]="subasignacionesParaMapa"
+          [getRecursoLabel]="obtenerIdentificadorRecurso.bind(this)"
+          [getEntidadLabel]="obtenerRazonSocialEntidad.bind(this)"
+          height="520px"
+          [radiusKm]="5">
+        </app-geo-patrol-map>
+      }
+
+    </section>
+  }<!-- /vistaActiva === mapa -->
+
+  <!-- ══ MODAL ═══════════════════════════════════════════════════════════════ -->
+  @if (modalAbierto) {
+    <div class="civic-modal-backdrop" (click)="cerrarModal()">
+      <div class="patrol-modal patrol-modal--wide" (click)="$event.stopPropagation()">
+
+        <!-- Cabecera modal -->
+        <div class="patrol-modal__header">
+          <div class="patrol-modal__header-inner">
+            <div class="patrol-modal__header-icon">
+              @if (modoModal === 'crear') {
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+              }
+              @if (modoModal === 'editar') {
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5
+                           m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+              }
+              @if (modoModal === 'ver') {
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              }
+            </div>
+            <div>
+              <h2 class="patrol-modal__title">
+                @if (modoModal === 'crear') { Nueva Asignación }
+                @if (modoModal === 'ver')   { Detalle de Asignación }
+                @if (modoModal === 'editar'){ Editar Asignación }
+              </h2>
+              <p class="patrol-modal__subtitle">Asignación de patrullaje por turno</p>
+            </div>
+          </div>
+          <button type="button" (click)="cerrarModal()" class="patrol-modal__close">✕</button>
+        </div>
+
+        <!-- Cuerpo modal -->
+        <div class="patrol-modal__body">
+
+          <!-- ─── FORM CREAR / EDITAR ─────────────────────────────────── -->
+          @if (modoModal === 'crear' || modoModal === 'editar') {
+            <form class="patrol-form" (ngSubmit)="guardar()">
+
+              <!-- Recurso y entidad -->
+              <section class="patrol-form__section">
+                <h3 class="patrol-form__section-title">
+                  <span class="patrol-form__section-accent patrol-form__section-accent--primary"></span>
+                  Recurso y entidad
+                </h3>
+                <div class="patrol-form__grid">
+                  <div class="patrol-form__field">
+                    <label class="patrol-form__label">Recurso operativo</label>
+                    <select [(ngModel)]="form.recursoId"
+                            (ngModelChange)="validarCampo('recursoId')"
+                            (blur)="validarCampo('recursoId')"
+                            name="recursoId"
+                            class="patrol-form__select"
+                            [class.patrol-form__select--error]="tieneError('recursoId')">
+                      <option value="">Seleccione un recurso</option>
+                      @for (r of (modoModal === 'crear' ? recursosDisponiblesParaAsignar : recursos);
+                            track trackByRecursoId($index, r)) {
+                        <option [value]="r.id">{{ r.identificador }}</option>
+                      }
+                    </select>
+                    @if (tieneError('recursoId')) {
+                      <p class="patrol-form__error">{{ errores['recursoId'] }}</p>
+                    }
+                  </div>
+                  <div class="patrol-form__field">
+                    <label class="patrol-form__label">Entidad destino</label>
+                    <select [(ngModel)]="form.entidadDestinoId"
+                            (ngModelChange)="validarCampo('entidadDestinoId')"
+                            (blur)="validarCampo('entidadDestinoId')"
+                            name="entidadDestinoId"
+                            class="patrol-form__select"
+                            [class.patrol-form__select--error]="tieneError('entidadDestinoId')">
+                      <option value="">Seleccione entidad destino</option>
+                      @for (e of entidades; track trackByEntidadId($index, e)) {
+                        <option [value]="e.id">{{ e.businessName }}</option>
+                      }
+                    </select>
+                    @if (tieneError('entidadDestinoId')) {
+                      <p class="patrol-form__error">{{ errores['entidadDestinoId'] }}</p>
+                    }
+                  </div>
+                </div>
+              </section>
+
+              <!-- Turno y responsable -->
+              <section class="patrol-form__section">
+                <h3 class="patrol-form__section-title">
+                  <span class="patrol-form__section-accent patrol-form__section-accent--accent"></span>
+                  Turno y responsable
+                </h3>
+                <div class="patrol-form__grid">
+                  <div class="patrol-form__field">
+                    <label class="patrol-form__label">Turno</label>
+                    <div class="patrol-turno-group">
+                      @for (t of turnos; track t) {
+                        <button type="button"
+                                (click)="form.turno = t; validarCampo('turno')"
+                                class="patrol-turno-btn"
+                                [class.patrol-turno-btn--active]="form.turno === t">
+                          {{ t === 'T_DIA' ? '☀️ Día' : t === 'T_TARDE' ? '🌤 Tarde' : '🌙 Noche' }}
+                        </button>
+                      }
+                    </div>
+                    @if (tieneError('turno')) {
+                      <p class="patrol-form__error">{{ errores['turno'] }}</p>
+                    }
+                  </div>
+                  <div class="patrol-form__field">
+                    <label class="patrol-form__label">
+                      Asignado por
+                      <span class="patrol-form__label-hint">(nombre del responsable)</span>
+                    </label>
+                    <input type="text"
+                           [(ngModel)]="form.asignadoPor"
+                           (ngModelChange)="validarCampo('asignadoPor')"
+                           (blur)="validarCampo('asignadoPor')"
+                           name="asignadoPor"
+                           maxlength="100"
+                           placeholder="Ej: Carlos Guerrero"
+                           class="patrol-form__input"
+                           [class.patrol-form__input--error]="tieneError('asignadoPor')" />
+                    @if (tieneError('asignadoPor')) {
+                      <p class="patrol-form__error">{{ errores['asignadoPor'] }}</p>
+                    }
+                  </div>
+                </div>
+              </section>
+
+              <!-- Período -->
+              <section class="patrol-form__section">
+                <h3 class="patrol-form__section-title">
+                  <span class="patrol-form__section-accent patrol-form__section-accent--teal"></span>
+                  Período de asignación
+                </h3>
+                <div class="patrol-form__grid">
+                  <div class="patrol-form__field">
+                    <label class="patrol-form__label">Fecha inicio</label>
+                    <input type="datetime-local"
+                           [(ngModel)]="form.fechaInicio"
+                           (ngModelChange)="validarCampo('fechaInicio'); validarCampo('fechaFin')"
+                           (blur)="validarCampo('fechaInicio')"
+                           name="fechaInicio"
+                           [min]="modoModal === 'crear' ? fechaMinimaISO : ''"
+                           class="patrol-form__input"
+                           [class.patrol-form__input--error]="tieneError('fechaInicio')" />
+                    @if (tieneError('fechaInicio')) {
+                      <p class="patrol-form__error">{{ errores['fechaInicio'] }}</p>
+                    }
+                  </div>
+                  <div class="patrol-form__field">
+                    <label class="patrol-form__label">Fecha fin</label>
+                    <input type="datetime-local"
+                           [(ngModel)]="form.fechaFin"
+                           (ngModelChange)="validarCampo('fechaFin')"
+                           (blur)="validarCampo('fechaFin')"
+                           name="fechaFin"
+                           [min]="form.fechaInicio || fechaMinimaISO"
+                           class="patrol-form__input"
+                           [class.patrol-form__input--error]="tieneError('fechaFin')" />
+                    @if (tieneError('fechaFin')) {
+                      <p class="patrol-form__error">{{ errores['fechaFin'] }}</p>
+                    }
+                  </div>
+                </div>
+              </section>
+
+              <!-- Observaciones y estado -->
+              <section class="patrol-form__section patrol-form__section--last">
+                <h3 class="patrol-form__section-title">
+                  <span class="patrol-form__section-accent patrol-form__section-accent--muted"></span>
+                  Observaciones y estado
+                </h3>
+                <div class="patrol-form__grid patrol-form__grid--3col">
+                  <div class="patrol-form__field patrol-form__field--span2">
+                    <label class="patrol-form__label">
+                      Observaciones <span class="patrol-form__label-hint">(opcional)</span>
+                    </label>
+                    <textarea [(ngModel)]="form.observaciones"
+                              name="observaciones"
+                              rows="3"
+                              maxlength="500"
+                              placeholder="Ej: Refuerzo nocturno por evento en zona céntrica"
+                              class="patrol-form__textarea">
+                    </textarea>
+                  </div>
+                  <div class="patrol-form__field">
+                    <label class="patrol-form__label">Estado</label>
+                    <select [(ngModel)]="form.estado"
+                            name="estado"
+                            [disabled]="modoModal === 'crear'"
+                            class="patrol-form__select patrol-form__select--disabled">
+                      <option value="ACTIVA">ACTIVA</option>
+                      <option value="FINALIZADA">FINALIZADA</option>
+                      <option value="CANCELADA">CANCELADA</option>
+                    </select>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Botones form -->
+              <div class="patrol-modal__footer">
+                <button type="button" (click)="cerrarModal()" class="civic-btn civic-btn--ghost">Cancelar</button>
+                <button type="submit"
+                        [disabled]="guardando || !formValido"
+                        class="civic-btn civic-btn--primary">
+                  {{ guardando ? 'Guardando…' : 'Guardar' }}
+                </button>
+              </div>
+
+            </form>
+          }
+
+          <!-- ─── MODO CREADO: enlace de tracking ───────────────────── -->
+          @if (modoModal === 'creado' && nuevaSubasignacion) {
+            <div class="patrol-created">
+
+              <!-- Ícono de éxito -->
+              <div class="patrol-created__success-icon">✅</div>
+
+              <h3 class="patrol-created__title">¡Asignación registrada!</h3>
+              <p class="patrol-created__lead">
+                Copia el enlace de tracking y envíaselo al operario por WhatsApp.
+                Cuando lo abra en su celular, podrás ver su ubicación en tiempo real aquí.
+              </p>
+
+              <!-- Datos clave de la asignación creada -->
+              <div class="patrol-created__meta">
+                <div class="patrol-created__meta-item">
+                  <span class="patrol-created__meta-label">Recurso</span>
+                  <span class="patrol-created__meta-value">
+                    {{ obtenerIdentificadorRecurso(nuevaSubasignacion.resourceId) }}
+                  </span>
+                </div>
+                <div class="patrol-created__meta-item">
+                  <span class="patrol-created__meta-label">Turno</span>
+                  <span class="patrol-created__meta-value">{{ formatear(nuevaSubasignacion.shift) }}</span>
+                </div>
+                <div class="patrol-created__meta-item">
+                  <span class="patrol-created__meta-label">Estado</span>
+                  <span class="civic-badge civic-badge--success">Activa</span>
+                </div>
+              </div>
+
+              <!-- Bloque principal: enlace de tracking -->
+              <div class="patrol-created__link-block">
+                <div class="patrol-created__link-header">
+                  <span class="patrol-created__link-icon">📡</span>
+                  <p class="patrol-created__link-label">Enlace de tracking para el operario</p>
+                </div>
+
+                <!-- URL legible (recortada) -->
+                <div class="patrol-created__url-wrap">
+                  <span class="patrol-created__url">{{ trackingUrlNueva }}</span>
+                </div>
+
+                <!-- Botón copiar (grande, prominente) -->
+                <button type="button"
+                        class="patrol-created__copy-btn"
+                        (click)="copiarEnlaceNueva()">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="patrol-created__copy-icon">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2
+                             m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                  </svg>
+                  Copiar enlace de tracking
+                </button>
+
+                <p class="patrol-created__hint">
+                  💬 El operario debe abrir este enlace en su celular.<br>
+                  Una vez que lo abra, el mapa de seguimiento se activará automáticamente.
+                </p>
+              </div>
+
+              <!-- Pie: acciones -->
+              <div class="patrol-modal__footer patrol-created__footer">
+                <button type="button" (click)="cerrarModal()" class="civic-btn civic-btn--ghost">
+                  Cerrar
+                </button>
+                <button type="button"
+                        (click)="abrirVer(nuevaSubasignacion)"
+                        class="civic-btn civic-btn--primary">
+                  Ver seguimiento en tiempo real →
+                </button>
+              </div>
+
+            </div>
+          }
+
+          <!-- ─── MODO VER ────────────────────────────────────────────── -->
+          @if (modoModal === 'ver' && seleccionado) {
+            <div class="space-y-5">
+
+              <section class="patrol-detail">
+                <div class="patrol-detail__top">
+                  <div>
+                    <p class="patrol-detail__eyebrow">Asignación de patrullaje</p>
+                    <h3 class="patrol-detail__resource">
+                      {{ obtenerIdentificadorRecurso(seleccionado.resourceId) }}
+                    </h3>
+                    <p class="patrol-detail__entity">
+                      {{ obtenerRazonSocialEntidad(seleccionado.targetEntityId) }}
+                    </p>
+                  </div>
+                  <div class="patrol-detail__badges">
+                    <span class="civic-badge" [ngClass]="obtenerClaseEstado(seleccionado.status)">
+                      {{ formatear(seleccionado.status) }}
+                    </span>
+                    <span class="civic-badge" [ngClass]="obtenerClaseTurno(seleccionado.shift)">
+                      {{ formatear(seleccionado.shift) }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="patrol-detail__grid">
+                  <div class="patrol-detail__card">
+                    <p class="patrol-detail__card-label">Asignado por</p>
+                    <p class="patrol-detail__card-value">{{ (seleccionado.assignedBy) || '—' }}</p>
+                  </div>
+                  <div class="patrol-detail__card">
+                    <p class="patrol-detail__card-label">Fecha inicio</p>
+                    <p class="patrol-detail__card-value">{{ formatearFecha(seleccionado.startDate) }}</p>
+                  </div>
+                  <div class="patrol-detail__card">
+                    <p class="patrol-detail__card-label">Fecha fin</p>
+                    <p class="patrol-detail__card-value">{{ formatearFecha(seleccionado.endDate) }}</p>
+                  </div>
+                  <div class="patrol-detail__card">
+                    <p class="patrol-detail__card-label">Creado</p>
+                    <p class="patrol-detail__card-value">{{ formatearFecha(seleccionado.createdAt) }}</p>
+                  </div>
+                </div>
+
+                @if (seleccionado.notes) {
+                  <div class="patrol-detail__obs">
+                    <p class="patrol-detail__card-label">Observaciones</p>
+                    <p class="patrol-detail__obs-text">{{ seleccionado.notes }}</p>
+                  </div>
+                }
+              </section>
+
+              <!-- ─── SEGUIMIENTO EN TIEMPO REAL (solo ACTIVA) ────────── -->
+              @if (seleccionado.status === 'ACTIVA') {
+                <section class="patrol-tracking">
+
+                  <!-- Cabecera de la sección -->
+                  <div class="patrol-tracking__header">
+                    <div class="patrol-tracking__header-left">
+                      <span class="patrol-tracking__icon">📡</span>
+                      <div>
+                        <p class="patrol-tracking__title">Seguimiento en tiempo real</p>
+                        <p class="patrol-tracking__sub">Actualizado cada 5 segundos · comparte el enlace al operario</p>
+                      </div>
+                    </div>
+
+                    <!-- Badge de actividad -->
+                    <span class="patrol-tracking__activity-badge"
+                          [class.patrol-tracking__activity-badge--green]="trackingActivityColor === 'green'"
+                          [class.patrol-tracking__activity-badge--yellow]="trackingActivityColor === 'yellow'"
+                          [class.patrol-tracking__activity-badge--red]="trackingActivityColor === 'red'">
+                      @if (trackingActivityColor === 'green') { <span class="patrol-tracking__activity-dot"></span> }
+                      {{ trackingActivityLabel }}
+                    </span>
+                  </div>
+
+                  <!-- Cuerpo: mapa + panel lateral -->
+                  <div class="patrol-tracking__body">
+
+                    <!-- Mapa con marcador en tiempo real y polyline del historial -->
+                    <div class="patrol-tracking__map-wrap">
+                      @if (trackingCargando) {
+                        <div class="patrol-tracking__map-loading">
+                          <div class="patrol-tracking__spinner"></div>
+                          <p>Cargando historial…</p>
+                        </div>
+                      } @else {
+                        <app-osm-map altura="100%" [centro]="trackingMapCenter" [zoom]="trackingMapZoom"
+                          [marcadores]="trackingMarcadores" [lineas]="trackingLineas" />
+                      }
+                    </div>
+
+                    <!-- Panel lateral: últimas 5 posiciones -->
+                    <aside class="patrol-tracking__sidebar">
+                      <p class="patrol-tracking__sidebar-title">Últimas posiciones</p>
+
+                      @if (trackingHistorial.length === 0 && !trackingCargando) {
+                        <p class="patrol-tracking__sidebar-empty">Sin datos aún</p>
+                      }
+
+                      @for (pos of trackingHistorial.slice(0, 5); track pos.id) {
+                        <div class="patrol-tracking__pos-item"
+                             [class.patrol-tracking__pos-item--latest]="$first">
+                          <p class="patrol-tracking__pos-time">
+                            {{ formatearFecha(pos.recordedAt) }}
+                          </p>
+                          <p class="patrol-tracking__pos-coords">
+                            {{ pos.lat | number:'1.5-5' }}, {{ pos.lng | number:'1.5-5' }}
+                          </p>
+                          @if (pos.accuracy != null) {
+                            <p class="patrol-tracking__pos-acc">± {{ pos.accuracy | number:'1.0-0' }} m</p>
+                          }
+                        </div>
+                      }
+                    </aside>
+
+                  </div><!-- /patrol-tracking__body -->
+
+                  <!-- Pie: botón copiar enlace -->
+                  <div class="patrol-tracking__footer">
+                    <button type="button"
+                            class="civic-btn civic-btn--secondary patrol-tracking__copy-btn"
+                            (click)="copiarEnlaceTracking()">
+                      <svg class="civic-btn__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2
+                                 m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                      </svg>
+                      Copiar enlace de tracking
+                    </button>
+                    <p class="patrol-tracking__footer-hint">
+                      Envía este enlace al operario por WhatsApp para que comparta su ubicación
+                    </p>
+                  </div>
+
+                </section>
+              }
+
+              <!-- Acciones rápidas -->
+              @if (puedeCrear && seleccionado.status === 'ACTIVA') {
+                <div class="patrol-quick-actions">
+                  <button type="button"
+                          (click)="cambiarEstado(seleccionado, 'FINALIZADA')"
+                          class="patrol-quick-btn patrol-quick-btn--success">
+                    ✓ Finalizar asignación
+                  </button>
+                  <button type="button"
+                          (click)="cambiarEstado(seleccionado, 'CANCELADA')"
+                          class="patrol-quick-btn patrol-quick-btn--danger">
+                    ✕ Cancelar asignación
+                  </button>
+                </div>
+              }
+
+              <!-- Botones ver -->
+              <div class="patrol-modal__footer">
+                <button type="button" (click)="cerrarModal()" class="civic-btn civic-btn--ghost">Cerrar</button>
+                @if (puedeCrear && seleccionado.status === 'ACTIVA') {
+                  <button type="button"
+                          (click)="abrirEditarDesdeDetalle()"
+                          class="civic-btn civic-btn--primary">
+                    Editar
+                  </button>
+                }
+              </div>
+
+            </div>
+          }
+
+        </div><!-- /patrol-modal__body -->
+      </div><!-- /patrol-modal -->
+    </div><!-- /civic-modal-backdrop -->
+  }
+
+</div><!-- /civic-page -->

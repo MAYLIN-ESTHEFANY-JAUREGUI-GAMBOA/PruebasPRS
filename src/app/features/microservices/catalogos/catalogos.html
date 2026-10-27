@@ -1,0 +1,398 @@
+<div class="civic-page">
+
+  <!-- CABECERA -->
+  <header class="civic-page-hero civic-page-hero--accent mb-5">
+    <div class="civic-page-hero__row">
+      <div class="civic-page-hero__main">
+        <div class="civic-page-hero__icon civic-page-hero__icon--accent" aria-hidden="true">
+          <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+          </svg>
+        </div>
+        <div>
+          <p class="civic-page-hero__eyebrow">Taxonomía del sistema</p>
+          <h1 class="civic-page-hero__title">Catálogos</h1>
+          <p class="civic-page-hero__lead">Elementos de referencia para clasificar recursos y entidades.</p>
+        </div>
+      </div>
+      <div class="civic-page-hero__actions flex-wrap">
+        <div class="civic-hero-stats">
+          <div class="civic-stat">
+            <p class="civic-stat__label">Total</p>
+            <p class="civic-stat__value">{{ catalogos.length }}</p>
+          </div>
+          <div class="civic-stat">
+            <p class="civic-stat__label">Grupos</p>
+            <p class="civic-stat__value">{{ obtenerTotalGrupos() }}</p>
+          </div>
+          <div class="civic-stat">
+            <p class="civic-stat__label">Activos</p>
+            <p class="civic-stat__value">{{ obtenerTotalActivos() }}</p>
+          </div>
+          <div class="civic-stat">
+            <p class="civic-stat__label">Inactivos</p>
+            <p class="civic-stat__value">{{ obtenerTotalInactivos() }}</p>
+          </div>
+        </div>
+        <button type="button" (click)="abrirCrear()" class="civic-btn civic-btn--primary">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Nuevo catálogo
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- BUSCADOR Y FILTROS -->
+  <section class="civic-toolbar mb-5">
+    <div class="civic-search">
+      <svg class="civic-search__icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+      </svg>
+      <input type="text" [(ngModel)]="busqueda" (ngModelChange)="aplicarFiltros()"
+        placeholder="Buscar por grupo, clave, etiqueta, categoría o tipo recurso..."
+        class="civic-input" />
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="civic-pills" role="tablist" aria-label="Filtrar catálogos">
+        <button *ngFor="let filtro of filtros" type="button" role="tab" (click)="seleccionarFiltro(filtro.value)"
+          class="civic-pill" [class.is-active]="filtroEstado === filtro.value"
+          [attr.aria-selected]="filtroEstado === filtro.value">
+          {{ filtro.label }}
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CARGANDO -->
+  <div *ngIf="cargando" class="civic-card civic-loading">
+    <div class="civic-loading__spinner" aria-hidden="true"></div>
+    <p class="text-sm font-medium text-civic-text-muted">Cargando catálogos…</p>
+  </div>
+
+  <!-- TABS POR CATEGORÍA -->
+  <section *ngIf="!cargando">
+
+    <!-- Pestañas + botones de reporte -->
+    <div class="flex items-center justify-between gap-2 mb-5">
+      <div class="flex gap-2">
+        <button *ngFor="let tab of tabs"
+                type="button"
+                (click)="tabActiva = tab.value"
+                class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all border-2"
+                [ngClass]="tabActiva === tab.value
+                  ? tab.color + ' text-white border-transparent shadow-md'
+                  : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'">
+          <span>{{ tab.icono }}</span>
+          {{ tab.label }}
+          <span class="text-[11px] font-black px-2 py-0.5 rounded-full"
+                [ngClass]="tabActiva === tab.value ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'">
+            {{ obtenerTotalPorCategoria(tab.value) }}
+          </span>
+        </button>
+      </div>
+
+      <!-- Botones de reporte -->
+      <div *ngIf="puedeExportar" class="flex items-center gap-2">
+        <button type="button" (click)="descargarPdf()" [disabled]="descargandoPdf || !hayDatosReporte"
+          class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm border-2 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          [title]="'Exportar ' + tabActiva + ' a PDF'">
+          <svg *ngIf="!descargandoPdf" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+          </svg>
+          <svg *ngIf="descargandoPdf" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          {{ descargandoPdf ? 'Generando...' : 'PDF' }}
+        </button>
+
+        <button type="button" (click)="descargarExcel()" [disabled]="descargandoExcel || !hayDatosReporte"
+          class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm border-2 border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          [title]="'Exportar ' + tabActiva + ' a Excel'">
+          <svg *ngIf="!descargandoExcel" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+          </svg>
+          <svg *ngIf="descargandoExcel" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          {{ descargandoExcel ? 'Generando...' : 'Excel' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Contenido de la tab activa -->
+    <ng-container *ngFor="let tab of tabs">
+      <div *ngIf="tabActiva === tab.value">
+
+        <div *ngIf="obtenerCatalogosPorCategoria(tab.value).length > 0; else sinItemsTab"
+             class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+
+          <div *ngFor="let catalogo of obtenerCatalogosPorCategoria(tab.value); trackBy: trackByCatalogoId"
+               class="group bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col overflow-hidden">
+
+            <!-- Franja superior -->
+            <div class="h-1 w-full" [ngClass]="tab.color"></div>
+
+            <div class="flex flex-col flex-1 px-5 pt-4 pb-3 gap-3">
+
+              <!-- Clave + estado -->
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[11px] font-semibold truncate max-w-[60%]" [ngClass]="tab.colorText">
+                  {{ formatearTexto(catalogo.key) }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0"
+                      [ngClass]="catalogo.status === 'ACTIVO'
+                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                        : 'bg-rose-50 text-rose-600 ring-1 ring-rose-200'">
+                  <span class="w-1.5 h-1.5 rounded-full"
+                        [ngClass]="catalogo.status === 'ACTIVO' ? 'bg-emerald-500' : 'bg-rose-400'"></span>
+                  {{ catalogo.status === 'ACTIVO' ? 'Activo' : 'Inactivo' }}
+                </span>
+              </div>
+
+              <!-- Nombre + ícono -->
+              <div class="flex items-center gap-3">
+                <div *ngIf="catalogo.mapIcon" class="w-10 h-10 rounded-xl flex items-center justify-center text-2xl shrink-0"
+                     [ngClass]="tab.colorBg">
+                  {{ obtenerEmojiIcono(catalogo.mapIcon) }}
+                </div>
+                <h3 class="text-[15px] font-bold text-slate-800 leading-snug">{{ catalogo.displayLabel }}</h3>
+              </div>
+
+              <div class="border-t border-slate-100"></div>
+
+              <!-- Tipo recurso -->
+              <div class="flex items-center gap-2">
+                <div class="w-5 h-5 rounded-md flex items-center justify-center shrink-0" [ngClass]="tab.colorBg">
+                  <svg class="w-3 h-3" [ngClass]="tab.colorText" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+                  </svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-[10px] text-slate-400 font-medium leading-none mb-0.5">Tipo operativo</p>
+                  <p class="text-xs font-semibold text-slate-700 truncate">{{ formatearTexto(catalogo.resourceType) }}</p>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Footer acciones -->
+            <div class="flex items-center justify-end gap-1 px-4 py-2.5 bg-slate-50 border-t border-slate-100">
+              <button type="button" (click)="abrirEditar(catalogo)"
+                      class="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-teal-700 hover:bg-teal-50 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                Editar
+              </button>
+              <div class="w-px h-4 bg-slate-200"></div>
+              <button type="button" (click)="cambiarEstado(catalogo)"
+                      class="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-lg text-xs font-semibold transition-colors"
+                      [ngClass]="catalogo.status === 'ACTIVO'
+                        ? 'text-slate-500 hover:text-rose-600 hover:bg-rose-50'
+                        : 'text-slate-500 hover:text-emerald-700 hover:bg-emerald-50'">
+                <svg *ngIf="catalogo.status === 'ACTIVO'" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                </svg>
+                <svg *ngIf="catalogo.status !== 'ACTIVO'" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                {{ catalogo.status === 'ACTIVO' ? 'Desactivar' : 'Activar' }}
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <ng-template #sinItemsTab>
+          <div class="flex flex-col items-center justify-center py-16 text-slate-400 gap-2 bg-white rounded-2xl border border-slate-200">
+            <span class="text-4xl">{{ tab.icono }}</span>
+            <p class="text-xs font-semibold text-slate-400 mt-2">Sin elementos en {{ tab.label }}</p>
+          </div>
+        </ng-template>
+
+      </div>
+    </ng-container>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL CREAR / EDITAR                                                   -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="modalAbierto"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4">
+
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" (click)="cerrarModal()"></div>
+
+    <!-- Panel -->
+    <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10">
+
+      <!-- Header del modal -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100"
+        [ngClass]="modoModal === 'crear' ? 'bg-teal-50' : 'bg-blue-50'">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm"
+            [ngClass]="modoModal === 'crear' ? 'bg-teal-500' : 'bg-blue-500'">
+            <svg *ngIf="modoModal === 'crear'" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+            </svg>
+            <svg *ngIf="modoModal === 'editar'" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-base font-black text-slate-800">
+              {{ modoModal === 'crear' ? 'Nuevo catálogo' : 'Editar catálogo' }}
+            </h2>
+            <p class="text-xs text-slate-500">
+              {{ modoModal === 'crear' ? 'Completa los campos para registrar un nuevo elemento.' : 'Modifica los campos y guarda los cambios.' }}
+            </p>
+          </div>
+        </div>
+        <button type="button" (click)="cerrarModal()"
+          class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Cuerpo del formulario -->
+      <div class="px-6 py-5 space-y-4 overflow-y-auto" style="max-height: calc(100vh - 220px)">
+
+        <!-- Clave (siempre mayúsculas) -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+            Código Interno (clave) <span class="text-red-400">*</span>
+          </label>
+          <input type="text" [(ngModel)]="catalogoForm.key"
+                 (ngModelChange)="catalogoForm.key = $event.toUpperCase(); validarCampo('clave')"
+                 placeholder="PATRULLA_POLICIAL"
+                 class="w-full h-10 px-3 rounded-xl border text-slate-700 placeholder:text-slate-300 text-sm font-mono focus:outline-none focus:ring-2 transition bg-white uppercase"
+                 [ngClass]="errores['clave']
+                   ? 'border-red-400 focus:ring-red-200 focus:border-red-400'
+                   : 'border-slate-200 focus:ring-teal-300 focus:border-teal-400'" />
+          <p *ngIf="errores['clave']" class="text-[11px] text-red-500 mt-1">{{ errores['clave'] }}</p>
+          <p *ngIf="!errores['clave']" class="text-[10px] text-slate-400 mt-1">Solo MAYÚSCULAS y guiones bajos. Ej: PATRULLA_POLICIAL</p>
+        </div>
+
+        <!-- Nombre Comercial -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+            Nombre Comercial (etiquetaVisual) <span class="text-red-400">*</span>
+          </label>
+          <input type="text" [(ngModel)]="catalogoForm.displayLabel"
+                 (ngModelChange)="validarCampo('etiquetaVisual')"
+                 placeholder="Ej: Patrullero Policial"
+                 class="w-full h-10 px-3 rounded-xl border text-slate-700 placeholder:text-slate-300 text-sm focus:outline-none focus:ring-2 transition bg-white"
+                 [ngClass]="errores['etiquetaVisual']
+                   ? 'border-red-400 focus:ring-red-200 focus:border-red-400'
+                   : 'border-slate-200 focus:ring-teal-300 focus:border-teal-400'" />
+          <p *ngIf="errores['etiquetaVisual']" class="text-[11px] text-red-500 mt-1">{{ errores['etiquetaVisual'] }}</p>
+        </div>
+
+        <!-- Institución + Tipo Operativo -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          <!-- Institución (categoriaPadre) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              Institución <span class="text-red-400">*</span>
+            </label>
+            <div class="relative">
+              <select [(ngModel)]="catalogoForm.parentCategory"
+                      class="w-full h-10 pl-3 pr-8 rounded-xl border text-slate-700 text-sm focus:outline-none focus:ring-2 transition appearance-none bg-white border-slate-200 focus:ring-teal-300 focus:border-teal-400">
+                <option value="SEGURIDAD">🛡️ Seguridad</option>
+                <option value="SALUD">🏥 Salud</option>
+                <option value="RESCATE">🔥 Rescate</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tipo Operativo (tipoRecurso) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              Tipo Operativo <span class="text-red-400">*</span>
+            </label>
+            <div class="relative">
+              <select [(ngModel)]="catalogoForm.resourceType"
+                      class="w-full h-10 pl-3 pr-8 rounded-xl border text-slate-700 text-sm focus:outline-none focus:ring-2 transition appearance-none bg-white border-slate-200 focus:ring-teal-300 focus:border-teal-400">
+                <option value="UNIDAD_MOVIL">🚗 Unidad Móvil</option>
+                <option value="UNIDAD_PERSONAL">👤 Unidad Personal</option>
+                <option value="UNIDAD_FIJA">🏢 Unidad Fija</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Galería de íconos -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+            Ícono <span class="text-red-400">*</span>
+          </label>
+          <div class="grid grid-cols-5 gap-2">
+            <button *ngFor="let icono of iconosPredefinidos"
+                    type="button"
+                    (click)="catalogoForm.mapIcon = icono.nombre; validarCampo('iconoMapa')"
+                    class="flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-center"
+                    [ngClass]="catalogoForm.mapIcon === icono.nombre
+                      ? 'border-teal-500 bg-teal-50 shadow-md'
+                      : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-teal-50/50'"
+                    [title]="icono.etiqueta">
+              <span class="text-2xl leading-none">{{ icono.emoji }}</span>
+              <span class="text-[9px] text-slate-500 font-medium leading-tight">{{ icono.etiqueta }}</span>
+            </button>
+          </div>
+          <p *ngIf="errores['iconoMapa']" class="text-[11px] text-red-500 mt-1.5">{{ errores['iconoMapa'] }}</p>
+          <p *ngIf="catalogoForm.mapIcon && !errores['iconoMapa']" class="text-[10px] text-teal-600 mt-1.5 font-medium">
+            ✓ Seleccionado: {{ catalogoForm.mapIcon }}
+          </p>
+        </div>
+
+        <!-- Info estado al crear -->
+        <div *ngIf="modoModal === 'crear'"
+             class="flex items-center gap-2.5 bg-teal-50 border border-teal-200 rounded-xl px-3.5 py-2.5">
+          <svg class="w-4 h-4 text-teal-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <p class="text-xs text-teal-700">Se creará con estado <strong>Activo</strong> y grupo <strong>SUB_TIPOS_RECURSOS</strong> por defecto.</p>
+        </div>
+
+      </div>
+
+      <!-- Footer del modal -->
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50">
+        <button type="button" (click)="cerrarModal()"
+          class="h-9 px-5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-100 transition">
+          Cancelar
+        </button>
+        <button type="button" (click)="guardar()"
+          class="h-9 px-6 rounded-xl font-bold text-sm text-white shadow transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          [disabled]="!!(errores['clave'] || errores['etiquetaVisual'] || errores['iconoMapa'])"
+          [ngClass]="modoModal === 'crear' ? 'bg-teal-500 hover:bg-teal-600' : 'bg-blue-500 hover:bg-blue-600'">
+          <svg *ngIf="modoModal === 'crear'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+          </svg>
+          <svg *ngIf="modoModal === 'editar'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          {{ modoModal === 'crear' ? 'Crear catálogo' : 'Guardar cambios' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>

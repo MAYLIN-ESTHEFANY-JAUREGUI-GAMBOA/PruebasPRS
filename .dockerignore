@@ -1,0 +1,13 @@
+node_modules
+dist
+.angular
+.git
+.gitignore
+.agents
+.cursor
+*.md
+.env
+.env.local
+.DS_Store
+coverage
+*.log

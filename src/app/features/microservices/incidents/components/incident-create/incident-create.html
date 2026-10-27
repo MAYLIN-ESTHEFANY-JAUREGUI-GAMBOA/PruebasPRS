@@ -1,0 +1,98 @@
+@if (isOpen()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+       (click)="closed.emit()">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[90vh]"
+         (click)="$event.stopPropagation()">
+
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+        <div>
+          <p class="text-[10px] uppercase tracking-wider font-bold text-gray-400">Nueva Incidencia</p>
+          <h3 class="text-lg font-black text-gray-900 mt-0.5 flex items-center gap-2">
+            <span class="material-symbols-outlined text-blue-500 text-xl">add_alert</span>
+            Registrar Incidencia Manual
+          </h3>
+        </div>
+        <button type="button" (click)="closed.emit()"
+                class="w-8 h-8 rounded-full bg-white border shadow-sm hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-5">
+
+        <!-- Gravedad -->
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider font-bold text-gray-500 mb-2">Nivel de Gravedad</label>
+          <div class="grid grid-cols-3 gap-3">
+            @for (g of severities; track g.v) {
+              <button type="button"
+                      (click)="severityLevel = g.v"
+                      class="flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-bold text-sm transition-all"
+                      [ngClass]="severityLevel === g.v ? g.cls + ' ring-2 ring-offset-1' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'">
+                <span class="w-2.5 h-2.5 rounded-full" [ngClass]="g.dot"></span>
+                {{ g.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Mapa -->
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider font-bold text-gray-500 mb-2">
+            Ubicación del Incidente
+            <span class="ml-2 font-normal text-gray-400 normal-case">Haz clic en el mapa para marcar el punto exacto</span>
+          </label>
+
+          <div class="relative w-full h-72 rounded-xl overflow-hidden border-2 transition-colors"
+               [ngClass]="selectedLocation.lat ? 'border-blue-400' : (triedSubmit ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-200')">
+            <app-osm-map altura="100%" [centro]="mapCenter" [zoom]="13" (mapaClick)="onMapClick($event)"
+              [marcadores]="selectedLocation.lat && selectedLocation.lng ? [{ lat: selectedLocation.lat, lng: selectedLocation.lng, titulo: 'Punto de incidente', color: '#dc2626' }] : []" />
+          </div>
+
+          <div class="mt-2 flex items-center gap-4 text-[12px]">
+            @if (selectedLocation.lat) {
+              <div class="flex items-center gap-2 text-blue-600 font-semibold">
+                <span class="material-symbols-outlined text-base">location_on</span>
+                Lat: {{ selectedLocation.lat | number:'1.5-5' }} &nbsp; Lng: {{ selectedLocation.lng | number:'1.5-5' }}
+              </div>
+            } @else {
+              <span class="text-gray-400 flex items-center gap-1">
+                <span class="material-symbols-outlined text-base">touch_app</span>
+                Toca el mapa para seleccionar la ubicación
+              </span>
+            }
+          </div>
+          @if (triedSubmit && !selectedLocation.lat) {
+            <p class="text-red-600 text-[11px] font-bold flex items-center gap-1 mt-1.5 animate-pulse">
+              <span class="material-symbols-outlined text-sm">error</span>
+              Es obligatorio seleccionar un punto en el mapa para ubicar el incidente.
+            </p>
+          }
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-3">
+        <button type="button" (click)="closed.emit()"
+                class="px-5 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors">
+          Cancelar
+        </button>
+        <button type="button"
+                (click)="confirm()"
+                [disabled]="isSaving() || !selectedLocation.lat || !severityLevel"
+                class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+          @if (isSaving()) {
+            <span class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+          }
+          {{ isSaving() ? 'Creando...' : 'Crear Incidencia' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

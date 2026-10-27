@@ -1,0 +1,103 @@
+:host {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  vertical-align: middle;
+}
+
+.sancion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+
+.sancion-chip--sm {
+  gap: 0.25rem;
+  padding: 0.125rem 0.375rem 0.125rem 0.125rem;
+  font-size: 0.6875rem;
+}
+
+.sancion-chip__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 2px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.sancion-chip--sm .sancion-chip__mark {
+  width: 1.125rem;
+  height: 1.125rem;
+  font-size: 0.625rem;
+}
+
+.sancion-chip__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 0 · Sin castigo — neutro informativo */
+.sancion-chip[data-nivel="0"] {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.sancion-chip[data-nivel="0"] .sancion-chip__mark {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+/* 1 · Aviso — ámbar / gold de marca */
+.sancion-chip[data-nivel="1"] {
+  background: #fff8eb;
+  border-color: #f5a623;
+  color: #92400e;
+}
+
+.sancion-chip[data-nivel="1"] .sancion-chip__mark {
+  background: #f5a623;
+  color: #0d1b3e;
+}
+
+/* 2 · Bloqueo temporal — naranja de alerta */
+.sancion-chip[data-nivel="2"] {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+
+.sancion-chip[data-nivel="2"] .sancion-chip__mark {
+  background: #c2410c;
+  color: #fff;
+}
+
+/* 3 · Bloqueo permanente — rojo crítico */
+.sancion-chip[data-nivel="3"] {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.sancion-chip[data-nivel="3"] .sancion-chip__mark {
+  background: #991b1b;
+  color: #fff;
+}

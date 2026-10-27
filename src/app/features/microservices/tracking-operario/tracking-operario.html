@@ -1,0 +1,104 @@
+<div class="trk-shell">
+
+  <!-- ── HEADER ─────────────────────────────────────────────────── -->
+  <header class="trk-header">
+    <div class="trk-header__brand">
+      <span class="trk-header__logo">🚓</span>
+      <div>
+        <p class="trk-header__title">Cañete Seguro</p>
+        <p class="trk-header__sub">Patrullaje en campo</p>
+      </div>
+    </div>
+
+    <!-- Badge de estado -->
+    <div class="trk-status-badge"
+         [class.trk-status-badge--sharing]="estado === 'compartiendo'"
+         [class.trk-status-badge--waiting]="estado === 'esperando'"
+         [class.trk-status-badge--error]="estado === 'sin-conexion' || estado === 'denegado'">
+      @if (estado === 'compartiendo') {
+        <span class="trk-pulse-dot"></span>
+      }
+      <span class="trk-status-badge__text">{{ etiquetaEstado }}</span>
+    </div>
+  </header>
+
+  <!-- ── MAPA ───────────────────────────────────────────────────── -->
+  <div class="trk-map-container">
+    <app-osm-map altura="100%" [oscuro]="true" [interactivo]="false" [centro]="mapCenter" [zoom]="mapZoom" [marcadores]="marcadores" />
+
+    <!-- Overlay de pulso animado sobre el marcador (CSS absolute centrado) -->
+    @if (estado === 'compartiendo' && posicionActual) {
+      <div class="trk-map-pulse-overlay">
+        <div class="trk-ripple"></div>
+      </div>
+    }
+
+    <!-- Overlay de estado cuando no hay GPS -->
+    @if (estado === 'esperando' || estado === 'denegado' || estado === 'sin-conexion') {
+      <div class="trk-map-overlay">
+        @if (estado === 'esperando') {
+          <div class="trk-map-overlay__spinner"></div>
+          <p class="trk-map-overlay__text">Obteniendo señal GPS…</p>
+        }
+        @if (estado === 'denegado') {
+          <span class="trk-map-overlay__icon">🚫</span>
+          <p class="trk-map-overlay__text">Permiso GPS denegado</p>
+          <p class="trk-map-overlay__hint">Permite el acceso a tu ubicación en la configuración del navegador</p>
+        }
+        @if (estado === 'sin-conexion') {
+          <span class="trk-map-overlay__icon">📡</span>
+          <p class="trk-map-overlay__text">Sin conexión</p>
+          <button type="button" class="trk-retry-btn" (click)="reintentar()">Reintentar</button>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- ── PANEL DE INFO ───────────────────────────────────────────── -->
+  <div class="trk-panel">
+
+    <!-- Coords actuales -->
+    <div class="trk-panel__row">
+      <div class="trk-panel__item">
+        <p class="trk-panel__label">Latitud</p>
+        <p class="trk-panel__value trk-panel__value--mono">
+          {{ posicionActual ? (posicionActual.lat | number:'1.6-6') : '—' }}
+        </p>
+      </div>
+      <div class="trk-panel__item">
+        <p class="trk-panel__label">Longitud</p>
+        <p class="trk-panel__value trk-panel__value--mono">
+          {{ posicionActual ? (posicionActual.lng | number:'1.6-6') : '—' }}
+        </p>
+      </div>
+    </div>
+
+    <div class="trk-panel__divider"></div>
+
+    <!-- Meta info -->
+    <div class="trk-panel__row">
+      <div class="trk-panel__item">
+        <p class="trk-panel__label">Precisión</p>
+        <p class="trk-panel__value">
+          {{ accuracy != null ? (accuracy | number:'1.0-0') + ' m' : '—' }}
+        </p>
+      </div>
+      <div class="trk-panel__item">
+        <p class="trk-panel__label">Último envío</p>
+        <p class="trk-panel__value">{{ ultimoEnvioTexto }}</p>
+      </div>
+      <div class="trk-panel__item">
+        <p class="trk-panel__label">Envíos</p>
+        <p class="trk-panel__value">{{ intentosEnvio }}</p>
+      </div>
+    </div>
+
+    <!-- ID de asignación -->
+    <div class="trk-panel__id">
+      <span class="trk-panel__id-label">Asignación</span>
+      <span class="trk-panel__id-value">{{ subassignmentId }}</span>
+    </div>
+
+  </div>
+
+</div>

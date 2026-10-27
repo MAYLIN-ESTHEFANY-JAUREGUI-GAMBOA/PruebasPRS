@@ -1,0 +1,373 @@
+﻿<div class="civic-page">
+
+  <header class="dashboard-header">
+    <div class="dashboard-header__top">
+      <div>
+        <h1 class="dashboard-header__title">Resumen operativo</h1>
+        <p class="dashboard-header__lead">
+          @if (enScopeDeEntidad) {
+            Recursos y operaciones de tu entidad registrada.
+          } @else if (esAdmin) {
+            Entidades, recursos y catálogos del distrito.
+          } @else {
+            Recursos y zonas asignadas a tu operación.
+          }
+        </p>
+      </div>
+      <div class="dashboard-header__actions">
+        @if (puedeExportarGeneral) {
+          <div class="dashboard-export" role="group" aria-labelledby="dashboard-export-label"
+               [attr.aria-busy]="generandoReporte">
+            <span id="dashboard-export-label" class="dashboard-export__label">
+              {{ generandoReporte ? 'Generando…' : 'Reporte general' }}
+            </span>
+            <button type="button" class="dashboard-export__btn" (click)="exportarGeneral('pdf')"
+              [disabled]="generandoReporte" title="Totales de municipalidades, entidades, usuarios, castigos e incidentes, en PDF">PDF</button>
+            <button type="button" class="dashboard-export__btn" (click)="exportarGeneral('xlsx')"
+              [disabled]="generandoReporte" title="Totales de municipalidades, entidades, usuarios, castigos e incidentes, en Excel">Excel</button>
+          </div>
+        }
+        <div class="dashboard-header__meta">{{ fechaActual }}</div>
+      </div>
+    </div>
+
+    @if (!cargando && !errorCarga) {
+      <div class="dashboard-kpi-inline">
+        <div class="dashboard-kpi-inline__item">
+          <p class="dashboard-kpi-inline__label">Recursos disponibles</p>
+          <p class="dashboard-kpi-inline__value">{{ porcentajeRecursosDisponibles }}%</p>
+        </div>
+        <div class="dashboard-kpi-inline__bar">
+          <p class="dashboard-kpi-inline__label">Disponibilidad de flota</p>
+          <div class="dashboard-kpi-inline__bar-track" role="progressbar"
+               [attr.aria-valuenow]="porcentajeRecursosDisponibles"
+               aria-valuemin="0" aria-valuemax="100">
+            <div class="dashboard-kpi-inline__bar-fill" [style.width.%]="porcentajeRecursosDisponibles"></div>
+          </div>
+        </div>
+        <button type="button"
+                class="civic-btn civic-btn--secondary shrink-0"
+                (click)="cargarResumen()"
+                [disabled]="cargando">
+          Actualizar
+        </button>
+      </div>
+    }
+  </header>
+
+  @if (cargando) {
+    <div class="dashboard-loading" role="status" aria-live="polite">
+      <div class="dashboard-loading__spinner" aria-hidden="true"></div>
+      <p class="dashboard-loading__text">Cargando métricas del sistema…</p>
+    </div>
+  } @else if (errorCarga) {
+    <div class="dashboard-error" role="alert">
+      <div class="dashboard-error__body">
+        <p class="dashboard-error__title">Error de conexión</p>
+        <p class="dashboard-error__lead">No se pudo contactar el servidor de datos.</p>
+      </div>
+      <button type="button" class="civic-btn civic-btn--primary" (click)="cargarResumen()">
+        Reintentar
+      </button>
+    </div>
+  } @else {
+
+    <section class="dashboard-metrics" aria-label="Indicadores principales">
+      @for (metrica of metricasPrincipales; track metrica.titulo) {
+        @if (metrica.ruta) {
+          <a [routerLink]="metrica.ruta" class="dashboard-metric" [attr.data-tone]="metrica.tone">
+            <div class="dashboard-metric__top">
+              <div>
+                <p class="dashboard-metric__label">{{ metrica.titulo }}</p>
+                <p class="dashboard-metric__value">{{ metrica.valor }}</p>
+                <p class="dashboard-metric__desc">{{ metrica.descripcion }}</p>
+              </div>
+              <span class="dashboard-metric__icon" aria-hidden="true">
+                @switch (metrica.icono) {
+                  @case ('catalog') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+                    </svg>
+                  }
+                  @case ('building') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/>
+                    </svg>
+                  }
+                  @case ('truck') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375A1.125 1.125 0 012.25 17.625V8.25m9.75 10.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h.008v.008H12.75v-.008zm0 0h6.75A1.875 1.875 0 0021.375 16.5V12m-9-3.75h.008v.008H12.75V8.25zm0 0h6.75a1.875 1.875 0 011.875 1.875v.75"/>
+                    </svg>
+                  }
+                }
+              </span>
+            </div>
+            <div class="dashboard-metric__cta">
+              <span>Ver detalle</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+            </div>
+          </a>
+        } @else {
+          <div class="dashboard-metric" [attr.data-tone]="metrica.tone">
+            <div class="dashboard-metric__top">
+              <div>
+                <p class="dashboard-metric__label">{{ metrica.titulo }}</p>
+                <p class="dashboard-metric__value">{{ metrica.valor }}</p>
+                <p class="dashboard-metric__desc">{{ metrica.descripcion }}</p>
+              </div>
+              <span class="dashboard-metric__icon" aria-hidden="true">
+                @switch (metrica.icono) {
+                  @case ('catalog') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+                    </svg>
+                  }
+                  @case ('building') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/>
+                    </svg>
+                  }
+                  @case ('truck') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375A1.125 1.125 0 012.25 17.625V8.25m9.75 10.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h.008v.008H12.75v-.008zm0 0h6.75A1.875 1.875 0 0021.375 16.5V12m-9-3.75h.008v.008H12.75V8.25zm0 0h6.75a1.875 1.875 0 011.875 1.875v.75"/>
+                    </svg>
+                  }
+                }
+              </span>
+            </div>
+          </div>
+        }
+      }
+    </section>
+
+    <section class="dashboard-grid">
+      <div class="dashboard-panel dashboard-panel--wide">
+        <div class="dashboard-panel__head">
+          <div>
+            <h2 class="dashboard-panel__title">Distribución de la flota</h2>
+            <p class="dashboard-panel__lead">Estado actual de los recursos operativos</p>
+          </div>
+          <span class="dashboard-panel__badge">{{ totalRecursos }} total</span>
+        </div>
+
+        <div class="dashboard-bars">
+          @for (estado of estadosRecursos; track estado.nombre) {
+            <div class="dashboard-bar" [attr.data-tone]="estado.tone">
+              <div class="dashboard-bar__meta">
+                <span class="dashboard-bar__dot" aria-hidden="true"></span>
+                <span class="dashboard-bar__name">{{ estado.nombre }}</span>
+                <span class="dashboard-bar__pct">{{ calcularPorcentaje(estado.valor, totalRecursos) }}%</span>
+                <span class="dashboard-bar__value">{{ estado.valor }}</span>
+              </div>
+              <div class="dashboard-bar__track" role="presentation">
+                <div class="dashboard-bar__fill"
+                     [style.width.%]="calcularPorcentaje(estado.valor, totalRecursos)"></div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="dashboard-mini-stats">
+          <div class="dashboard-mini-stat">
+            <p class="dashboard-mini-stat__value">{{ totalCategoriasRecursos }}</p>
+            <p class="dashboard-mini-stat__label">Tipos de recurso</p>
+          </div>
+        </div>
+      </div>
+
+      <aside class="dashboard-shortcuts" aria-label="Accesos directos">
+        <h2 class="dashboard-shortcuts__title">Accesos directos</h2>
+        <p class="dashboard-shortcuts__lead">Ir a cada módulo del panel</p>
+        <nav class="dashboard-shortcuts__list">
+          @for (accion of accionesRapidas; track accion.titulo) {
+            <a [routerLink]="accion.ruta" class="dashboard-quick-link" [attr.data-tone]="accion.tone">
+              <span class="dashboard-quick-link__icon" aria-hidden="true">
+                @switch (accion.icono) {
+                  @case ('catalog') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+                    </svg>
+                  }
+                  @case ('building') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/>
+                    </svg>
+                  }
+                  @case ('truck') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375A1.125 1.125 0 012.25 17.625V8.25m9.75 10.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h.008v.008H12.75v-.008zm0 0h6.75A1.875 1.875 0 0021.375 16.5V12m-9-3.75h.008v.008H12.75V8.25zm0 0h6.75a1.875 1.875 0 011.875 1.875v.75"/>
+                    </svg>
+                  }
+                  @case ('map') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/>
+                    </svg>
+                  }
+                  @case ('alert') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                    </svg>
+                  }
+                }
+              </span>
+              <span class="dashboard-quick-link__text">
+                <span class="dashboard-quick-link__title">{{ accion.titulo }}</span>
+                <span class="dashboard-quick-link__desc">{{ accion.descripcion }}</span>
+              </span>
+              <svg class="dashboard-quick-link__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+            </a>
+          }
+        </nav>
+      </aside>
+    </section>
+
+    <section class="dashboard-lower" aria-label="Emergencias en su alcance">
+      <div class="dashboard-panel">
+        <div class="dashboard-panel__head">
+          <div>
+            <h2 class="dashboard-panel__title">Emergencias por estado</h2>
+            <p class="dashboard-panel__lead">
+              {{ incidentesTotal }} incidente(s) {{ esAdmin ? 'en todas las municipalidades' : esMunicipal ? 'en tu municipalidad' : 'de tu entidad' }}
+            </p>
+          </div>
+        </div>
+        <div class="dashboard-status-list">
+          @for (fila of incidentesPorEstado; track fila.clave) {
+            <div class="dashboard-status-item dashboard-status-item--muted">
+              <span>{{ fila.clave }}</span>
+              <strong>{{ fila.total }}</strong>
+            </div>
+          } @empty {
+            <p class="dashboard-panel__lead">Sin incidentes registrados.</p>
+          }
+        </div>
+      </div>
+
+      <div class="dashboard-panel">
+        <div class="dashboard-panel__head">
+          <div>
+            <h2 class="dashboard-panel__title">Por tipo y gravedad</h2>
+            <p class="dashboard-panel__lead">Distribución de las emergencias atendidas</p>
+          </div>
+        </div>
+        <div class="dashboard-status-list">
+          @for (fila of incidentesPorTipo; track fila.clave) {
+            <div class="dashboard-status-item dashboard-status-item--accent">
+              <span>{{ fila.clave }}</span>
+              <strong>{{ fila.total }}</strong>
+            </div>
+          }
+          @for (fila of incidentesPorGravedad; track fila.clave) {
+            <div class="dashboard-status-item dashboard-status-item--danger">
+              <span>Gravedad {{ fila.clave | lowercase }}</span>
+              <strong>{{ fila.total }}</strong>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="dashboard-lower">
+      <div class="dashboard-panel">
+        <div class="dashboard-panel__head">
+          <div>
+            <h2 class="dashboard-panel__title">Entidades institucionales</h2>
+            <p class="dashboard-panel__lead">Hospitales, comisarías y aliados registrados</p>
+          </div>
+        </div>
+
+        <div class="dashboard-ring-layout">
+          <div class="dashboard-ring" aria-hidden="true">
+            <svg viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="38" fill="none" stroke="var(--color-civic-surface-muted)" stroke-width="12"/>
+              <circle cx="50" cy="50" r="38" fill="none" stroke="var(--color-civic-success)" stroke-width="12"
+                      stroke-linecap="round"
+                      [attr.stroke-dasharray]="238.76"
+                      [attr.stroke-dashoffset]="238.76 - (238.76 * porcentajeEntidadesActivas / 100)"/>
+            </svg>
+            <div class="dashboard-ring__center">
+              <span class="dashboard-ring__value">{{ porcentajeEntidadesActivas }}%</span>
+              <span class="dashboard-ring__label">activas</span>
+            </div>
+          </div>
+
+          <div class="dashboard-legend">
+            <div class="dashboard-legend__row">
+              <div class="dashboard-legend__meta">
+                <span class="dashboard-legend__dot dashboard-legend__dot--success"></span>
+                <span>Activas</span>
+              </div>
+              <strong>{{ totalEntidadesActivas }}</strong>
+            </div>
+            <div class="dashboard-legend__track">
+              <div class="dashboard-legend__fill dashboard-legend__fill--success"
+                   [style.width.%]="porcentajeEntidadesActivas"></div>
+            </div>
+            <div class="dashboard-legend__row">
+              <div class="dashboard-legend__meta">
+                <span class="dashboard-legend__dot dashboard-legend__dot--muted"></span>
+                <span>Inactivas</span>
+              </div>
+              <strong class="dashboard-legend__muted">{{ totalEntidadesInactivas }}</strong>
+            </div>
+            <div class="dashboard-legend__track">
+              <div class="dashboard-legend__fill dashboard-legend__fill--muted"
+                   [style.width.%]="100 - porcentajeEntidadesActivas"></div>
+            </div>
+            <p class="dashboard-legend__note">
+              {{ totalEntidades }} instituciones · {{ totalTiposEntidad }} tipos
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-panel">
+        <div class="dashboard-panel__head">
+          <div>
+            <h2 class="dashboard-panel__title">Disponibilidad de recursos</h2>
+            <p class="dashboard-panel__lead">Capacidad operativa disponible ahora</p>
+          </div>
+        </div>
+
+        <div class="dashboard-ring-layout">
+          <div class="dashboard-ring" aria-hidden="true">
+            <svg viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="38" fill="none" stroke="var(--color-civic-surface-muted)" stroke-width="12"/>
+              <circle cx="50" cy="50" r="38" fill="none" stroke="var(--color-civic-accent)" stroke-width="12"
+                      stroke-linecap="round"
+                      [attr.stroke-dasharray]="238.76"
+                      [attr.stroke-dashoffset]="238.76 - (238.76 * porcentajeRecursosDisponibles / 100)"/>
+            </svg>
+            <div class="dashboard-ring__center">
+              <span class="dashboard-ring__value">{{ porcentajeRecursosDisponibles }}%</span>
+              <span class="dashboard-ring__label">libre</span>
+            </div>
+          </div>
+
+          <div class="dashboard-status-list">
+            <div class="dashboard-status-item dashboard-status-item--success">
+              <span>Disponibles</span>
+              <strong>{{ recursosDisponibles }}</strong>
+            </div>
+            <div class="dashboard-status-item dashboard-status-item--accent">
+              <span>En operación</span>
+              <strong>{{ recursosOcupados }}</strong>
+            </div>
+            <div class="dashboard-status-item dashboard-status-item--danger">
+              <span>Mantenimiento</span>
+              <strong>{{ recursosMantenimiento }}</strong>
+            </div>
+            <div class="dashboard-status-item dashboard-status-item--muted">
+              <span>Fuera de servicio</span>
+              <strong>{{ recursosFueraServicio }}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  }
+</div>

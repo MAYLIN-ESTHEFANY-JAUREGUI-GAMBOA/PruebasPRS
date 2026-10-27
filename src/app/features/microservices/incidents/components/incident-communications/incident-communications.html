@@ -1,0 +1,222 @@
+@if (isOpen() && incident()) {
+  <div class="w-full h-full bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden ring-1 ring-gray-900/5">
+    
+    <!-- Cabecera -->
+    <div class="px-5 py-4 bg-white border-b border-gray-200 flex flex-col gap-3 shrink-0">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 ring-2 ring-blue-100 shrink-0">
+            {{ $any(incident())._iconoTipo }}
+          </div>
+          <div>
+            <div class="flex items-center gap-2.5">
+              <h1 class="text-sm font-bold text-gray-900 tracking-wide">SALA DE CRISIS</h1>
+              <span class="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-red-100 border border-red-200 text-red-700">
+                {{ incident()!.trackingCode }}
+              </span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-emerald-600 mt-0.5">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span class="font-medium tracking-wide text-[10px] uppercase text-emerald-700">Canal Cifrado en Vivo</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 text-gray-400">
+          <button class="p-1.5 rounded-lg hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Expandir">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 3h6m0 0v6m0-6L14 10M9 21H3m0 0v-6m0 6l7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+          </button>
+          <button (click)="close()" class="p-1.5 rounded-lg hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Ocultar">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+          </button>
+        </div>
+      </div>
+      
+      <div class="flex items-center justify-between pt-3 border-t border-gray-100 text-xs">
+        <div class="flex items-center gap-3 text-gray-600">
+          <span class="text-[11px] font-medium text-gray-500">Operadores:</span>
+          <div class="flex -space-x-1.5 overflow-hidden">
+            <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 ring-2 ring-white text-[9px] font-bold text-white shadow-sm z-30 relative" title="Policía Nacional">PN</span>
+            <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-600 ring-2 ring-white text-[9px] font-bold text-white shadow-sm z-20 relative" title="Salud">SA</span>
+            <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-600 ring-2 ring-white text-[9px] font-bold text-white shadow-sm z-10 relative" title="Bomberos">BO</span>
+          </div>
+          <span class="px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200 text-[10px] text-gray-600 font-mono font-medium">+ en línea</span>
+        </div>
+        <span class="text-[11px] text-gray-500 flex items-center gap-1.5 font-mono font-medium"><span class="w-2 h-2 rounded-full bg-blue-500"></span> 14ms</span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="px-5 py-2.5 bg-gray-50/80 border-b border-gray-200 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2 bg-gray-100 p-1 rounded-xl border border-gray-200/80 w-full">
+        <button (click)="switchTab('GENERAL')"
+                class="flex-1 py-1.5 px-3 rounded-lg font-semibold text-xs shadow-sm flex items-center justify-center gap-2 transition-all"
+                [ngClass]="activeTab === 'GENERAL' ? 'bg-white text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-white/60 font-medium'">
+          <svg class="w-4 h-4" [ngClass]="activeTab === 'GENERAL' ? 'text-blue-600' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+          <span>Chat General</span>
+        </button>
+        <button (click)="switchTab('PRIVADO')"
+                class="flex-1 py-1.5 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-2 transition-all"
+                [ngClass]="activeTab === 'PRIVADO' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-white/60 font-medium'">
+          <svg class="w-4 h-4" [ngClass]="activeTab === 'PRIVADO' ? 'text-indigo-600' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+          <span class="flex items-center gap-1">Chat Privado <span class="text-[9px] uppercase px-1.5 py-0.2 rounded font-bold bg-indigo-100 text-indigo-800">Táctico</span></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="flex-1 p-5 space-y-4 overflow-y-auto bg-gray-50/50 text-xs" #chatScroll>
+      @if (loadingChat) {
+        <div class="flex-1 flex flex-col items-center justify-center text-gray-400 h-full min-h-[200px]">
+          <div class="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mb-2"></div>
+          <p class="text-xs font-medium">Cargando mensajes...</p>
+        </div>
+      } @else if (chatError) {
+        <div class="flex-1 flex flex-col items-center justify-center text-gray-500 h-full min-h-[200px] p-6 text-center">
+          <div class="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mb-3 ring-4 ring-red-50/50">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+          <p class="text-[13px] font-bold text-gray-800 mb-1">Error de sincronización</p>
+          <p class="text-[11px] text-gray-500 max-w-xs mb-4">{{ chatError }}</p>
+          <button type="button" (click)="retryLoad()"
+                  class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-sm flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Reintentar
+          </button>
+        </div>
+      } @else if (messages.length === 0) {
+        <div class="flex-1 flex flex-col items-center justify-center text-gray-400 h-full min-h-[200px]">
+          <svg class="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          <p class="text-sm font-medium">No hay mensajes aún.</p>
+          <p class="text-[11px] text-center mt-1 px-4 text-gray-500">
+            {{ activeTab === 'PRIVADO' ? 'Inicia la coordinación táctica privada entre operadores.' : 'Escribe el primer mensaje para coordinar la crisis.' }}
+          </p>
+        </div>
+      } @else {
+        <div class="flex items-center gap-3 my-2">
+          <div class="h-px bg-gray-200 flex-1"></div>
+          <span class="px-3 py-1 rounded-full bg-white border border-gray-200 text-[10px] font-mono text-gray-500 uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+            @if (activeTab === 'PRIVADO') {
+              <span class="w-2 h-2 rounded-full bg-indigo-500"></span> Canal Táctico Privado (Operadores)
+            } @else {
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span> Historial de Crisis (General)
+            }
+          </span>
+          <div class="h-px bg-gray-200 flex-1"></div>
+        </div>
+
+        @for (msg of messages; track msg.id) {
+            <div class="flex items-start gap-3 w-full"
+                 [ngClass]="msg.senderRole === 'OPERADOR_ENTIDAD' ? 'flex-row-reverse' : 'flex-row'">
+              
+              <div class="w-8 h-8 rounded-xl font-bold flex items-center justify-center shrink-0 shadow-sm text-xs mt-1"
+                   [ngClass]="getRoleBadgeClasses(msg)">
+                {{ getInitials(msg) }}
+              </div>
+
+              <div class="flex-1 space-y-1 max-w-[85%]">
+                <div class="flex items-center gap-2 mb-1.5" [ngClass]="msg.senderRole === 'OPERADOR_ENTIDAD' ? 'flex-row-reverse' : 'flex-row'">
+                  <span class="font-bold text-[11px]" [ngClass]="msg.senderRole === 'OPERADOR_ENTIDAD' ? 'text-blue-700' : 'text-gray-700'">
+                    {{ msg.senderName || 'Ciudadano' }}
+                  </span>
+                  <span class="text-[9px] font-mono text-gray-400 uppercase">{{ msg.formattedTime || formatTime(msg.sentAt) }}</span>
+                </div>
+
+                <div class="rounded-2xl p-3.5 shadow-sm leading-relaxed"
+                     [ngClass]="msg.senderRole === 'OPERADOR_ENTIDAD' ? 'bg-blue-600 text-white rounded-tr-sm' : 'bg-white border border-gray-200 text-gray-800 rounded-tl-sm'">
+                  
+                  @if (!msg.messageType || msg.messageType === 'TEXTO') {
+                    <p class="break-words text-[13px]">{{ msg.content }}</p>
+                  }
+
+                  @if (msg.messageType === 'IMAGEN') {
+                    <div class="mt-1">
+                      <a [href]="msg.content" target="_blank" rel="noopener noreferrer" class="cursor-zoom-in block">
+                        <img [src]="msg.content" alt="Evidencia" loading="lazy" class="w-full max-w-[240px] max-h-48 object-cover rounded-lg border shadow-sm" [ngClass]="msg.senderRole === 'OPERADOR_ENTIDAD' ? 'border-blue-500/50' : 'border-gray-200'" />
+                      </a>
+                    </div>
+                  }
+
+                  @if (msg.messageType === 'AUDIO') {
+                    <div class="mt-1">
+                      <audio controls preload="metadata" class="max-w-[220px] h-10 rounded-md">
+                        <source [src]="msg.content" type="audio/mpeg">
+                        Tu navegador no soporta audio.
+                      </audio>
+                    </div>
+                  }
+
+                  @if (msg.messageType === 'VIDEO') {
+                    <div class="mt-1">
+                      <video controls preload="metadata" class="w-full max-w-[240px] rounded-lg border shadow-sm" [ngClass]="msg.senderRole === 'OPERADOR_ENTIDAD' ? 'border-blue-500/50' : 'border-gray-200'">
+                        <source [src]="msg.content" type="video/mp4">
+                        Tu navegador no soporta video.
+                      </video>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        }
+    </div>
+
+    <!-- Input -->
+    @if (!canHandle()) {
+      <div class="p-4 bg-gray-50 border-t border-gray-200 shrink-0 text-xs text-gray-500">
+        Chat en modo lectura.
+      </div>
+    } @else {
+      <div class="p-3 sm:p-4 bg-white border-t border-gray-200 shrink-0 touch-manipulation">
+        <form class="space-y-2" (submit)="sendMessage(); $event.preventDefault()">
+          <div class="flex items-center gap-2 bg-gray-50 border border-gray-300 focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 rounded-2xl px-3 py-2 transition-all shadow-sm">
+            
+            <input type="text" 
+                   [(ngModel)]="newMessageText" 
+                   name="newMessageText"
+                   [disabled]="sendingMessage"
+                   class="bg-transparent border-0 p-0 text-[13px] text-gray-900 placeholder-gray-400 focus:ring-0 flex-1 outline-none w-full px-1" 
+                   [placeholder]="activeTab === 'PRIVADO' ? 'Escribe un mensaje táctico a los operadores...' : 'Escribe un mensaje en la sala de crisis...'" />
+            
+            <div class="flex items-center gap-1 shrink-0">
+              <button type="button" class="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors cursor-not-allowed" title="Adjuntar imagen/video (Próximamente)">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+              </button>
+              <button type="button" class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-200 rounded-lg transition-colors cursor-not-allowed" title="Grabar audio (Próximamente)">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+              </button>
+              <button type="submit" 
+                      [disabled]="!newMessageText.trim() || sendingMessage"
+                      [ngClass]="activeTab === 'PRIVADO' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-blue-600 hover:bg-blue-700'"
+                      class="w-8 h-8 ml-1 rounded-xl disabled:bg-gray-400 text-white flex items-center justify-center shadow-md transition-all shrink-0">
+                @if (!sendingMessage) {
+                  <svg class="w-4 h-4 transform rotate-90 fill-current" viewBox="0 0 20 20">
+                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
+                  </svg>
+                } @else {
+                  <div class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                }
+              </button>
+            </div>
+          </div>
+          
+          <div class="flex items-center justify-between text-[10px] text-gray-400 px-2 pt-1">
+            <span class="flex items-center gap-1 font-medium text-gray-500">
+              <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              Cifrado E2E
+            </span>
+            <span>Enter para enviar</span>
+          </div>
+        </form>
+      </div>
+    }
+  </div>
+}

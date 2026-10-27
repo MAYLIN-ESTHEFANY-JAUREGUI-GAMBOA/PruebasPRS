@@ -1,0 +1,939 @@
+<div class="min-h-full bg-slate-50" (click)="cerrarMenuEstado()">
+
+  <!-- TOAST -->
+  <div *ngIf="toast"
+       class="fixed inset-0 z-[200] flex items-center justify-center px-4"
+       style="background: rgba(15,23,42,0.55); backdrop-filter: blur(6px);"
+       (click)="cerrarToast()">
+    <div class="relative w-full max-w-sm rounded-2xl shadow-2xl p-7 text-center"
+         (click)="$event.stopPropagation()"
+         [ngClass]="{
+           'bg-emerald-600': toast.tipo === 'exito',
+           'bg-red-600':     toast.tipo === 'error',
+           'bg-indigo-600':  toast.tipo === 'info'
+         }">
+      <div class="mx-auto mb-4 w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-3xl">
+        <span *ngIf="toast.tipo === 'exito'">✅</span>
+        <span *ngIf="toast.tipo === 'error'">❌</span>
+        <span *ngIf="toast.tipo === 'info'">ℹ️</span>
+      </div>
+      <p class="text-lg font-black text-white mb-1">
+        <span *ngIf="toast.tipo === 'exito'">¡Operación exitosa!</span>
+        <span *ngIf="toast.tipo === 'error'">Ocurrió un error</span>
+        <span *ngIf="toast.tipo === 'info'">Aviso</span>
+      </p>
+      <p class="text-sm text-white/90 font-medium leading-relaxed">{{ toast.mensaje }}</p>
+      <button type="button" (click)="cerrarToast()"
+              class="mt-5 px-7 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-black uppercase tracking-widest transition-all border border-white/30">
+        Entendido
+      </button>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <section class="bg-white border-b border-slate-200 px-8 py-6 mb-6">
+    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+      <!-- Título con ícono y descripción -->
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-xl bg-orange-600 flex items-center justify-center flex-shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Gestión operativa del sistema</p>
+          <h1 class="text-3xl font-bold text-slate-900 tracking-tight mb-1">Recursos Operativos</h1>
+          <p class="text-sm text-slate-600">Administración y registro de unidades operativas del sistema</p>
+        </div>
+      </div>
+
+      <!-- Métricas en cards -->
+      <div class="flex items-center gap-3">
+        <div class="text-center px-6 py-3 rounded-xl bg-blue-50 border border-blue-200">
+          <div class="flex items-center justify-center gap-2 mb-1">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+            </svg>
+            <p class="text-xs text-blue-600 font-bold uppercase tracking-wide">Total</p>
+          </div>
+          <p class="text-2xl font-bold text-blue-700">{{ recursos.length }}</p>
+        </div>
+
+        <div class="text-center px-6 py-3 rounded-xl bg-emerald-50 border border-emerald-200">
+          <div class="flex items-center justify-center gap-2 mb-1">
+            <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <p class="text-xs text-emerald-600 font-bold uppercase tracking-wide">Activos</p>
+          </div>
+          <p class="text-2xl font-bold text-emerald-700">{{ contarPorEstado('DISPONIBLE') }}</p>
+        </div>
+
+        <div class="text-center px-6 py-3 rounded-xl bg-slate-100 border border-slate-200">
+          <div class="flex items-center justify-center gap-2 mb-1">
+            <svg class="w-4 h-4 text-slate-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"/>
+            </svg>
+            <p class="text-xs text-slate-600 font-bold uppercase tracking-wide">Inactivos</p>
+          </div>
+          <p class="text-2xl font-bold text-slate-700">{{ contarPorEstado('EN_MANTENIMIENTO') + contarPorEstado('FUERA_SERVICIO') + contarPorEstado('DADO_DE_BAJA') }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BÚSQUEDA Y FILTROS -->
+  <section class="bg-white rounded-2xl border border-slate-200 shadow-sm mx-8 mb-6">
+    <div class="p-6">
+      <!-- Barra de búsqueda -->
+      <div class="relative mb-6">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+          </svg>
+        </div>
+        <input type="text"
+               [(ngModel)]="busqueda"
+               (ngModelChange)="aplicarFiltros()"
+               placeholder="Buscar por placa, recurso, entidad, zona, encargado..."
+               class="w-full h-12 pl-12 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 focus:bg-white transition text-sm" />
+      </div>
+
+      <!-- Sección de filtros y acciones -->
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <!-- Filtros -->
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-3">
+            <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+            </svg>
+            <p class="text-sm font-bold text-slate-700">Estado</p>
+          </div>
+          
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" (click)="seleccionarFiltro('TODOS')"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                    [ngClass]="filtroActivo === 'TODOS' 
+                      ? 'bg-orange-600 text-white shadow-md' 
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+              </svg>
+              Todos
+              <span class="px-2 py-0.5 rounded-md text-xs font-bold"
+                    [ngClass]="filtroActivo === 'TODOS' ? 'bg-white/20' : 'bg-slate-200'">
+                {{ recursos.length }}
+              </span>
+            </button>
+
+            <button type="button" (click)="seleccionarFiltro('DISPONIBLE')"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                    [ngClass]="filtroActivo === 'DISPONIBLE' 
+                      ? 'bg-emerald-600 text-white shadow-md' 
+                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'">
+              <span class="w-2 h-2 rounded-full bg-current"></span>
+              Disponible
+              <span class="px-2 py-0.5 rounded-md text-xs font-bold"
+                    [ngClass]="filtroActivo === 'DISPONIBLE' ? 'bg-white/20' : 'bg-emerald-200'">
+                {{ contarPorEstado('DISPONIBLE') }}
+              </span>
+            </button>
+
+            <button type="button" (click)="seleccionarFiltro('OCUPADO')"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                    [ngClass]="filtroActivo === 'OCUPADO' 
+                      ? 'bg-amber-600 text-white shadow-md' 
+                      : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'">
+              <span class="w-2 h-2 rounded-full bg-current"></span>
+              Ocupado
+              <span class="px-2 py-0.5 rounded-md text-xs font-bold"
+                    [ngClass]="filtroActivo === 'OCUPADO' ? 'bg-white/20' : 'bg-amber-200'">
+                {{ contarPorEstado('OCUPADO') }}
+              </span>
+            </button>
+
+            <button type="button" (click)="seleccionarFiltro('EN_MANTENIMIENTO')"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                    [ngClass]="filtroActivo === 'EN_MANTENIMIENTO' 
+                      ? 'bg-rose-600 text-white shadow-md' 
+                      : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'">
+              <span class="w-2 h-2 rounded-full bg-current"></span>
+              Mantenimiento
+              <span class="px-2 py-0.5 rounded-md text-xs font-bold"
+                    [ngClass]="filtroActivo === 'EN_MANTENIMIENTO' ? 'bg-white/20' : 'bg-rose-200'">
+                {{ contarPorEstado('EN_MANTENIMIENTO') }}
+              </span>
+            </button>
+
+            <button type="button" (click)="seleccionarFiltro('FUERA_SERVICIO')"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                    [ngClass]="filtroActivo === 'FUERA_SERVICIO' 
+                      ? 'bg-slate-700 text-white shadow-md' 
+                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'">
+              <span class="w-2 h-2 rounded-full bg-current"></span>
+              Fuera de servicio
+              <span class="px-2 py-0.5 rounded-md text-xs font-bold"
+                    [ngClass]="filtroActivo === 'FUERA_SERVICIO' ? 'bg-white/20' : 'bg-slate-200'">
+                {{ contarPorEstado('FUERA_SERVICIO') }}
+              </span>
+            </button>
+
+            <button type="button" (click)="seleccionarFiltro('DADO_DE_BAJA')"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                    [ngClass]="filtroActivo === 'DADO_DE_BAJA' 
+                      ? 'bg-slate-600 text-white shadow-md' 
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"/>
+              </svg>
+              Dado de baja
+              <span class="px-2 py-0.5 rounded-md text-xs font-bold"
+                    [ngClass]="filtroActivo === 'DADO_DE_BAJA' ? 'bg-white/20' : 'bg-slate-200'">
+                {{ contarPorEstado('DADO_DE_BAJA') }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="flex items-center gap-2 lg:border-l lg:border-slate-200 lg:pl-6">
+          <div *ngIf="puedeExportar" class="flex items-center gap-2 mb-3 lg:mb-0">
+            <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            <p class="text-sm font-bold text-slate-700">Exportar</p>
+          </div>
+          
+          <button *ngIf="puedeExportar" type="button" (click)="descargarPDF()"
+                  [disabled]="generandoReporte || recursosFiltrados.length === 0"
+                  class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-red-600 border-2 border-red-200 font-semibold text-sm hover:bg-red-50 hover:border-red-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg *ngIf="generandoReporte" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <svg *ngIf="!generandoReporte" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+            {{ generandoReporte ? 'Generando…' : 'PDF' }}
+          </button>
+          
+          <button *ngIf="puedeExportar" type="button" (click)="descargarExcel()"
+                  [disabled]="generandoReporte || recursosFiltrados.length === 0"
+                  class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-emerald-600 border-2 border-emerald-200 font-semibold text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg *ngIf="generandoReporte" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <svg *ngIf="!generandoReporte" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            {{ generandoReporte ? 'Generando…' : 'Excel' }}
+          </button>
+
+          <button *ngIf="puedeCrear" type="button" (click)="abrirCrear()"
+                  class="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-orange-600 text-white font-bold text-sm shadow-lg shadow-orange-600/30 hover:bg-orange-700 transition-all ml-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+            </svg>
+            Nuevo recurso
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TABLA -->
+  <section class="civic-table-wrap">
+
+    <div *ngIf="cargando" class="civic-loading">
+      <div class="civic-loading__spinner" aria-hidden="true"></div>
+      <p class="text-sm font-medium text-civic-text-muted">Sincronizando recursos operativos…</p>
+    </div>
+
+    <div *ngIf="!cargando" class="overflow-x-auto">
+      <table class="min-w-[1100px]">
+        <thead>
+          <tr>
+            <th>Identificador</th>
+            <th>Encargado</th>
+            <th>Recurso</th>
+            <th>Entidad</th>
+            <th>Zona operativa</th>
+            <th>Subestado</th>
+            <th>Estado</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <tr *ngFor="let recurso of recursosFiltrados; trackBy: trackByRecursoId"
+              class="hover:bg-civic-primary-soft/40 transition-colors group">
+
+            <!-- Identificador -->
+            <td class="px-6 py-4">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-civic-surface-muted text-civic-text-secondary font-medium font-mono text-xs border border-civic-border group-hover:border-civic-primary-muted group-hover:text-civic-primary group-hover:bg-civic-primary-soft transition-colors">
+                {{ recurso.identificador || recurso.internalCode }}
+              </div>
+            </td>
+
+            <!-- Encargado -->
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-full bg-civic-primary-soft border border-civic-primary-soft flex items-center justify-center text-xs text-civic-primary font-black">
+                  {{ resolverEncargado(recurso) ? resolverEncargado(recurso).charAt(0).toUpperCase() : '?' }}
+                </div>
+                <div>
+                  <p class="font-bold text-slate-800 leading-tight text-sm">
+                    {{ resolverEncargado(recurso) || 'Sin asignar' }}
+                  </p>
+                  <p class="text-[11px] text-slate-400">Responsable</p>
+                </div>
+              </div>
+            </td>
+
+            <!-- Recurso/Catálogo -->
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-base shrink-0 shadow-2xs">
+                  {{ obtenerEmojiCatalogo(obtenerCatalogoPorId(resolverCatalogoId(recurso), recurso), recurso) }}
+                </div>
+                <div>
+                  <p class="font-bold text-slate-800 text-sm">
+                    {{ obtenerEtiquetaVisualCatalogo(resolverCatalogoId(recurso), recurso) }}
+                  </p>
+                  <p class="text-[11px] text-slate-400 mt-0.5">
+                    {{ formatearTexto(obtenerTipoRecursoCatalogo(resolverCatalogoId(recurso), recurso)) }}
+                  </p>
+                </div>
+              </div>
+            </td>
+
+            <!-- Entidad -->
+            <td class="px-6 py-4">
+              <p class="font-bold text-slate-800 leading-tight text-sm">
+                {{ obtenerRazonSocialEntidad(resolverEntidadId(recurso)) }}
+              </p>
+              <p class="text-xs text-slate-500 mt-0.5">
+                {{ formatearTexto(obtenerTipoEntidad(resolverEntidadId(recurso))) }}
+              </p>
+            </td>
+
+            <!-- Zona operativa -->
+            <td class="px-6 py-4">
+              <ng-container *ngIf="resolverZona(recurso) as zona; else sinZona">
+                <p class="font-bold text-slate-800 text-sm">{{ zona.zone }}</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">
+                  {{ zona.code ? zona.code + ' · ' : '' }}{{ zona.district || '' }}
+                </p>
+              </ng-container>
+              <ng-template #sinZona>
+                <span class="text-xs text-slate-400 italic">Sin zona</span>
+              </ng-template>
+            </td>
+
+            <!-- Subestado -->
+            <td class="px-6 py-4">
+              <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-bold border"
+                    [ngClass]="obtenerClaseSubestado(resolverSubestado(recurso))">
+                {{ formatearTexto(resolverSubestado(recurso)) }}
+              </span>
+            </td>
+
+            <!-- Estado -->
+            <td class="px-6 py-4">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border"
+                    [ngClass]="obtenerClaseEstado(resolverEstado(recurso))">
+                {{ formatearTexto(resolverEstado(recurso)) }}
+              </span>
+            </td>
+
+            <!-- Acciones -->
+            <td class="px-6 py-4">
+              <div class="flex items-center justify-center gap-1">
+
+                <!-- Ver -->
+                <button type="button" (click)="abrirVer(recurso)"
+                        class="p-2 rounded-lg text-slate-400 hover:text-civic-primary hover:bg-civic-primary-soft transition-all"
+                        title="Ver detalle">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                </button>
+
+                <!-- Editar -->
+                <button *ngIf="puedeEditar(recurso) && resolverEstado(recurso) !== 'DADO_DE_BAJA'"
+                        type="button" (click)="abrirEditarDirecto(recurso)"
+                        class="p-2 rounded-lg text-slate-400 hover:text-civic-primary hover:bg-civic-primary-soft transition-all"
+                        title="Editar recurso">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                </button>
+
+                <!-- Dado de baja badge -->
+                <span *ngIf="resolverEstado(recurso) === 'DADO_DE_BAJA'"
+                      class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-wide">
+                  Retirado
+                </span>
+
+                <!-- Si tiene orden activa en Flota: inmovilizado -->
+                <div *ngIf="tieneOrdenActiva(recurso.id)" class="relative">
+                  <span class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold cursor-help shadow-2xs"
+                        [title]="'Inmovilizado por Orden de Mantenimiento ' + obtenerCodigoOrdenActiva(recurso.id) + '. Debe cancelarse o liberarse desde Flota.'">
+                    <span>🔒</span>
+                    <span class="hidden xl:inline text-[10px] font-mono font-bold">{{ obtenerCodigoOrdenActiva(recurso.id) }}</span>
+                  </span>
+                </div>
+
+                <!-- Cambiar estado rápido (solo si NO tiene orden activa y no está dado de baja) -->
+                <div *ngIf="puedeEditar(recurso) && resolverEstado(recurso) !== 'DADO_DE_BAJA' && !tieneOrdenActiva(recurso.id)" class="relative">
+                  <button type="button"
+                          (click)="toggleMenuEstado(recurso.id!, $event)"
+                          [disabled]="cambiandoEstado === recurso.id"
+                          class="p-2 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 transition-all disabled:opacity-40"
+                          title="Cambiar estado">
+                    <svg class="w-4 h-4" [ngClass]="{'animate-spin': cambiandoEstado === recurso.id}"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                  </button>
+                  <div *ngIf="menuEstadoAbierto === recurso.id"
+                       class="absolute right-0 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-100 py-1 overflow-hidden">
+                    <p class="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                      Cambiar estado
+                    </p>
+                    <button *ngFor="let op of opcionesEstado"
+                            type="button"
+                            (click)="cambiarEstadoRapido(recurso, op.value)"
+                            class="w-full text-left px-3 py-2 text-xs font-semibold transition-colors flex items-center gap-2"
+                            [ngClass]="[op.clase, resolverEstado(recurso) === op.value ? 'opacity-40 cursor-default' : '']">
+                      {{ op.label }}
+                      <span *ngIf="resolverEstado(recurso) === op.value" class="ml-auto text-[10px] font-bold opacity-60">actual</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </td>
+
+          </tr>
+
+          <tr *ngIf="recursosFiltrados.length === 0">
+            <td colspan="8" class="px-6 py-16 text-center">
+              <p class="text-slate-500 font-medium text-lg">No se encontraron recursos operativos</p>
+              <p class="text-slate-400 text-sm mt-1">Intenta con otros términos de búsqueda o filtros.</p>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+
+  <!-- MODAL -->
+  <div *ngIf="modalAbierto"
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-sm px-4 py-6">
+    <div class="w-full max-w-3xl max-h-full overflow-hidden flex flex-col bg-white rounded-3xl shadow-2xl border border-slate-100">
+
+      <!-- Cabecera modal -->
+      <div class="bg-white border-b border-slate-100 px-8 py-5 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-full bg-civic-accent-soft text-civic-accent flex items-center justify-center">
+            <svg *ngIf="modoModal === 'crear'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            <svg *ngIf="modoModal === 'editar'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            <svg *ngIf="modoModal === 'ver'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-xl font-black text-slate-800 tracking-tight">
+              <span *ngIf="modoModal === 'crear'">Nuevo Recurso</span>
+              <span *ngIf="modoModal === 'ver'">Detalle del Recurso</span>
+              <span *ngIf="modoModal === 'editar'">Editar Recurso</span>
+            </h2>
+            <p class="text-xs text-slate-400 font-medium mt-0.5">Recurso operativo del sistema</p>
+          </div>
+        </div>
+        <button type="button" (click)="cerrarModal()"
+                class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors">
+          ✕
+        </button>
+      </div>
+
+      <!-- Cuerpo modal -->
+      <div class="overflow-y-auto p-8 custom-scrollbar">
+
+        <!-- ===== FORM CREAR / EDITAR ===== -->
+        <form *ngIf="modoModal === 'crear' || modoModal === 'editar'"
+              class="space-y-6" (ngSubmit)="guardar()">
+
+          <!-- Datos del recurso -->
+          <section class="rounded-xl border border-civic-border bg-civic-surface-soft p-5">
+            <h3 class="text-base font-black text-slate-800 mb-4 flex items-center gap-2">
+              <span class="w-1.5 h-5 rounded-full bg-civic-primary inline-block"></span>
+              Datos del recurso
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+              <!-- Datos del Recurso (Campos editables - misma tabla) -->
+              <div class="md:col-span-2 space-y-3 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="material-symbols-outlined text-slate-600">category</span>
+                  <label class="block text-sm font-bold text-slate-700">
+                    Datos del Recurso
+                    <span class="text-xs font-normal text-slate-500">(Campos de catálogo)</span>
+                  </label>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <!-- Clave (key) -->
+                  <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700">
+                      Clave <span class="text-red-500">*</span>
+                      <span class="text-[10px] font-normal text-slate-500">(ej: PAT-001)</span>
+                    </label>
+                    <input type="text"
+                           [(ngModel)]="recursoForm.key"
+                           name="key"
+                           placeholder="PAT-001"
+                           class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-civic-primary focus:border-civic-primary"
+                           [readonly]="modoModal !== 'crear' && modoModal !== 'editar'" />
+                  </div>
+
+                  <!-- Nombre (name) -->
+                  <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700">
+                      Nombre <span class="text-red-500">*</span>
+                      <span class="text-[10px] font-normal text-slate-500">(ej: Patrulla Alpha)</span>
+                    </label>
+                    <input type="text"
+                           [(ngModel)]="recursoForm.name"
+                           name="name"
+                           placeholder="Patrulla Alpha"
+                           class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-civic-primary focus:border-civic-primary"
+                           [readonly]="modoModal !== 'crear' && modoModal !== 'editar'" />
+                  </div>
+
+                  <!-- Tipo (type) -->
+                  <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700">
+                      Tipo <span class="text-red-500">*</span>
+                    </label>
+                    <select [(ngModel)]="recursoForm.type"
+                            name="type"
+                            class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-civic-primary focus:border-civic-primary"
+                            [disabled]="modoModal !== 'crear' && modoModal !== 'editar'">
+                      <option value="UNIDAD_MOVIL">🚗 Unidad Móvil</option>
+                      <option value="UNIDAD_PERSONAL">👤 Unidad Personal</option>
+                      <option value="UNIDAD_FIJA">🏢 Unidad Fija</option>
+                    </select>
+                  </div>
+
+                  <!-- Categoría (category) -->
+                  <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700">
+                      Categoría <span class="text-red-500">*</span>
+                    </label>
+                    <select [(ngModel)]="recursoForm.category"
+                            name="category"
+                            class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-civic-primary focus:border-civic-primary"
+                            [disabled]="modoModal !== 'crear' && modoModal !== 'editar'">
+                      <option value="SEGURIDAD">🛡️ Seguridad</option>
+                      <option value="SALUD">🏥 Salud</option>
+                      <option value="RESCATE">🔥 Rescate</option>
+                    </select>
+                  </div>
+
+                  <!-- Icono (icon) -->
+                  <div class="space-y-1.5 md:col-span-2">
+                    <label class="block text-xs font-bold text-slate-700">
+                      Icono
+                      <span class="text-[10px] font-normal text-slate-500">(archivo del mapa)</span>
+                    </label>
+                    <select [(ngModel)]="recursoForm.icon"
+                            name="icon"
+                            class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-civic-primary focus:border-civic-primary"
+                            [disabled]="modoModal !== 'crear' && modoModal !== 'editar'">
+                      <option value="icono_patrulla.png">🚔 Patrulla</option>
+                      <option value="icono_moto_policial.png">🏍️ Moto Policial</option>
+                      <option value="icono_ambulancia.png">🚑 Ambulancia</option>
+                      <option value="icono_medico.png">🩺 Médico</option>
+                      <option value="icono_camion_bomberos.png">🚒 Camión Bomberos</option>
+                      <option value="icono_bombero.png">👨‍🚒 Bombero</option>
+                      <option value="icono_helicoptero.png">🚁 Helicóptero</option>
+                      <option value="icono_policia.png">👮 Policía</option>
+                      <option value="icono_camioneta.png">🚙 Camioneta</option>
+                      <option value="icono_otro.png">📦 Otro</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Identificador -->
+              <div class="space-y-1.5">
+                <label class="block text-sm font-bold text-slate-700">
+                  Identificador / Placa
+                  <span class="text-xs text-slate-400 font-normal">(2-30 chars, sin espacios)</span>
+                </label>
+                <input type="text"
+                       [(ngModel)]="recursoForm.identificador"
+                       (ngModelChange)="validarCampoRecurso('identificador')"
+                       (blur)="validarCampoRecurso('identificador')"
+                       name="identificador"
+                       maxlength="30"
+                       [readonly]="modoModal === 'editar'"
+                       placeholder="Ej: UCF-002"
+                       class="w-full h-12 px-4 rounded-xl border bg-white text-slate-800 font-bold font-mono focus:outline-none focus:ring-2 transition-all"
+                       [ngClass]="modoModal === 'editar'
+                         ? 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed'
+                         : (tieneErrorRecurso('identificador') ? 'border-red-300 focus:ring-red-300 bg-red-50' : 'border-slate-200 focus:ring-civic-primary focus:border-civic-primary')" />
+                <p *ngIf="modoModal !== 'editar' && tieneErrorRecurso('identificador')" class="text-xs text-red-600 font-semibold">{{ erroresRecurso['identificador'] }}</p>
+                <p *ngIf="modoModal === 'editar'" class="text-xs text-civic-primary font-medium">No se puede modificar después del registro.</p>
+              </div>
+
+              <!-- Encargado -->
+              <div class="space-y-1.5">
+                <label class="block text-sm font-bold text-slate-700">
+                  Personal Encargado
+                  <span class="text-xs text-slate-400 font-normal">(opcional)</span>
+                </label>
+                <input type="text"
+                       [(ngModel)]="recursoForm.encargadoNombre"
+                       (ngModelChange)="validarCampoRecurso('encargadoNombre')"
+                       (blur)="validarCampoRecurso('encargadoNombre')"
+                       name="encargadoNombre"
+                       maxlength="100"
+                       placeholder="Ej: Suboficial Jorge Perez"
+                       class="w-full h-12 px-4 rounded-xl border bg-white text-slate-800 focus:outline-none focus:ring-2 transition-all"
+                       [ngClass]="tieneErrorRecurso('encargadoNombre') ? 'border-red-300 focus:ring-red-300 bg-red-50' : 'border-slate-200 focus:ring-civic-primary focus:border-civic-primary'" />
+                <p *ngIf="tieneErrorRecurso('encargadoNombre')" class="text-xs text-red-600 font-semibold">{{ erroresRecurso['encargadoNombre'] }}</p>
+              </div>
+
+            </div>
+          </section>
+
+          <!-- Entidad propietaria -->
+          <section class="rounded-xl border border-civic-border bg-civic-surface-soft p-5">
+            <h3 class="text-base font-black text-slate-800 mb-4 flex items-center gap-2">
+              <span class="w-1.5 h-5 rounded-full bg-civic-ink inline-block"></span>
+              Entidad propietaria
+            </h3>
+
+            <!-- Caso 1: Usuario en ámbito de su propia entidad (enScopeDeEntidad) en modo Crear -->
+            <div *ngIf="modoModal === 'crear' && enScopeDeEntidad" 
+                 class="p-3.5 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3 shadow-2xs">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-xl shrink-0">
+                  {{ obtenerIconoTipoEntidad(tipoEntidadEfectivo) }}
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <p class="text-xs font-bold text-slate-800 truncate">
+                      {{ obtenerRazonSocialEntidad(recursoForm.entidadId) }}
+                    </p>
+                    <span class="text-[10px] font-bold px-1.5 py-0.2 rounded border" [ngClass]="obtenerColorBadgeTipoEntidad(tipoEntidadEfectivo)">
+                      {{ formatearTexto(tipoEntidadEfectivo) }}
+                    </span>
+                  </div>
+                  <p class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Asignado automáticamente a tu entidad
+                  </p>
+                </div>
+              </div>
+              <div class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 text-[11px] font-semibold border border-slate-200 shrink-0">
+                Fijado por tu sesión
+              </div>
+            </div>
+
+            <!-- Caso 2: Super Admin en modo Crear (puede seleccionar cualquier entidad) -->
+            <div *ngIf="modoModal === 'crear' && !enScopeDeEntidad" class="space-y-1.5">
+              <label class="block text-sm font-bold text-slate-700">Entidad</label>
+              <select [(ngModel)]="recursoForm.entidadId"
+                      name="entidadId"
+                      (ngModelChange)="onEntidadFormChange($event)"
+                      (blur)="validarCampoRecurso('entidadId')"
+                      class="w-full h-12 px-4 rounded-xl border bg-white text-slate-800 focus:outline-none focus:ring-2 transition-all"
+                      [ngClass]="tieneErrorRecurso('entidadId') ? 'border-red-300 focus:ring-red-300 bg-red-50' : 'border-slate-200 focus:ring-civic-primary focus:border-civic-primary'">
+                <option value="">Seleccione entidad propietaria</option>
+                <option *ngFor="let ent of entidades; trackBy: trackByEntidadId" [value]="ent.id">
+                  {{ ent.businessName }} — {{ formatearTexto(ent.entityType) }}
+                </option>
+              </select>
+              <p *ngIf="tieneErrorRecurso('entidadId')" class="text-xs text-red-600 font-semibold">{{ erroresRecurso['entidadId'] }}</p>
+            </div>
+
+            <!-- Caso 3: Modo Editar (solo lectura) -->
+            <div *ngIf="modoModal === 'editar'"
+                 class="p-3.5 rounded-xl border border-slate-200 bg-slate-100/70 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-xl shrink-0 shadow-2xs">
+                  {{ obtenerIconoTipoEntidad(obtenerTipoEntidad(recursoForm.entidadId)) }}
+                </div>
+                <div class="min-w-0">
+                  <p class="text-xs font-bold text-slate-700 truncate">
+                    {{ obtenerRazonSocialEntidad(recursoForm.entidadId) }}
+                  </p>
+                  <p class="text-[11px] text-slate-500 mt-0.5">
+                    {{ formatearTexto(obtenerTipoEntidad(recursoForm.entidadId)) }}
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold shrink-0">
+                <span class="material-symbols-outlined text-xs">lock</span>
+                <span>No modificable</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Zona operativa -->
+          <section class="rounded-xl border border-slate-200 bg-white p-5">
+            <h3 class="text-base font-black text-slate-800 mb-4 flex items-center gap-2">
+              <span class="w-1.5 h-5 rounded-full bg-sky-500 inline-block"></span>
+              Zona operativa
+              <span class="text-xs text-slate-400 font-normal">(opcional)</span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="space-y-1.5">
+                <label class="block text-sm font-bold text-slate-700">Nombre de zona</label>
+                <input type="text" [(ngModel)]="recursoForm.zonaNombre" name="zonaNombre"
+                       maxlength="100" placeholder="Ej: Parque del Banco de la Nación"
+                       class="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 transition-all" />
+              </div>
+              <div class="space-y-1.5">
+                <label class="block text-sm font-bold text-slate-700">Código</label>
+                <input type="text" [(ngModel)]="recursoForm.zonaCodigo" name="zonaCodigo"
+                       maxlength="30" placeholder="Ej: ZONA-PBC-001"
+                       class="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 transition-all font-mono" />
+              </div>
+              <div class="space-y-1.5">
+                <label class="block text-sm font-bold text-slate-700">Distrito</label>
+                <input type="text" [(ngModel)]="recursoForm.zonaDistrito" name="zonaDistrito"
+                       maxlength="80" placeholder="Ej: San Vicente de Cañete"
+                       class="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 transition-all" />
+              </div>
+            </div>
+          </section>
+
+          <!-- Estados -->
+          <section class="rounded-xl border border-slate-200 bg-white p-5">
+            <h3 class="text-base font-black text-slate-800 mb-4 flex items-center gap-2">
+              <span class="w-1.5 h-5 rounded-full bg-emerald-500 inline-block"></span>
+              Estados
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+              <div class="space-y-1.5">
+                <label class="block text-sm font-bold text-slate-700">Disponibilidad</label>
+                <select [(ngModel)]="recursoForm.estadoDisponibilidad"
+                        (ngModelChange)="validarCampoRecurso('estadoDisponibilidad')"
+                        name="estadoDisponibilidad"
+                        [disabled]="modoModal === 'editar' && tieneOrdenActiva(recursoSeleccionado?.id)"
+                        class="w-full h-12 px-4 rounded-xl border bg-white text-slate-800 focus:outline-none focus:ring-2 transition-all"
+                        [ngClass]="modoModal === 'editar' && tieneOrdenActiva(recursoSeleccionado?.id)
+                          ? 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed'
+                          : (tieneErrorRecurso('estadoDisponibilidad') ? 'border-red-300 focus:ring-red-300 bg-red-50' : 'border-slate-200 focus:ring-emerald-400 focus:border-emerald-400')">
+                  <option value="DISPONIBLE">🟢 Disponible</option>
+                  <option value="OCUPADO">🟠 Ocupado</option>
+                  <option value="EN_MANTENIMIENTO">🔴 En mantenimiento</option>
+                  <option value="FUERA_DE_SERVICIO">⚫ Fuera de servicio</option>
+                  <option value="RESERVADO">🟡 Reservado</option>
+                </select>
+                <div *ngIf="modoModal === 'editar' && tieneOrdenActiva(recursoSeleccionado?.id)"
+                     class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2 text-xs text-amber-800 mt-1">
+                  <span class="text-sm shrink-0">🔒</span>
+                  <span>Vehículo con Orden Técnica <b>{{ obtenerCodigoOrdenActiva(recursoSeleccionado?.id) }}</b>. La disponibilidad está gobernada por Flota y Mantenimiento.</span>
+                </div>
+                <p *ngIf="tieneErrorRecurso('estadoDisponibilidad')" class="text-xs text-red-600 font-semibold">{{ erroresRecurso['estadoDisponibilidad'] }}</p>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="block text-sm font-bold text-slate-700">Subestado operativo</label>
+                <select [(ngModel)]="recursoForm.subestadoOperativo"
+                        (ngModelChange)="validarCampoRecurso('subestadoOperativo')"
+                        name="subestadoOperativo"
+                        class="w-full h-12 px-4 rounded-xl border bg-white text-slate-800 focus:outline-none focus:ring-2 transition-all"
+                        [ngClass]="tieneErrorRecurso('subestadoOperativo') ? 'border-red-300 focus:ring-red-300 bg-red-50' : 'border-slate-200 focus:ring-emerald-400 focus:border-emerald-400'">
+                  <option value="ASIGNADO_PATRULLAJE">Asignado patrullaje</option>
+                  <option value="MANTENIMIENTO_PREVENTIVO">Mantenimiento preventivo</option>
+                  <option value="MANTENIMIENTO_CORRECTIVO">Mantenimiento correctivo</option>
+                  <option value="PRESTADO_TEMPORALMENTE">Prestado temporalmente</option>
+                  <option value="EN_COMISION">En comisión</option>
+                  <option value="EN_CAPACITACION">En capacitación</option>
+                </select>
+                <p *ngIf="tieneErrorRecurso('subestadoOperativo')" class="text-xs text-red-600 font-semibold">{{ erroresRecurso['subestadoOperativo'] }}</p>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="block text-sm font-bold text-slate-700">Estado del registro</label>
+                <select [(ngModel)]="recursoForm.estado" name="estado"
+                        class="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition-all">
+                  <option value="ACTIVO">Activo</option>
+                  <option value="INACTIVO">Inactivo</option>
+                </select>
+              </div>
+
+            </div>
+          </section>
+
+          <!-- Botones -->
+          <div class="flex items-center justify-end gap-4 pt-4 border-t border-slate-100">
+            <button type="button" (click)="cerrarModal()"
+                    class="px-6 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 hover:text-slate-800 transition-colors">
+              Cancelar
+            </button>
+            <button type="submit"
+                    [disabled]="guardando || !recursoFormValido"
+                    class="civic-btn civic-btn--primary">
+              {{ guardando ? 'Guardando...' : 'Guardar Registro' }}
+            </button>
+          </div>
+
+        </form>
+
+        <!-- ===== MODO VER ===== -->
+        <div *ngIf="modoModal === 'ver' && recursoSeleccionado" class="space-y-6">
+
+          <!-- Resumen -->
+          <section class="rounded-xl border border-civic-border bg-civic-surface p-5 shadow-sm">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-2xl shrink-0 shadow-2xs">
+                  {{ obtenerEmojiCatalogo(obtenerCatalogoPorId(resolverCatalogoId(recursoSeleccionado))) }}
+                </div>
+                <div>
+                  <p class="text-xs font-medium text-civic-text-muted mb-0.5">Resumen del recurso</p>
+                  <h3 class="text-xl font-bold text-slate-800">
+                    {{ obtenerEtiquetaVisualCatalogo(resolverCatalogoId(recursoSeleccionado)) }}
+                  </h3>
+                  <p class="text-xs text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
+                    <span class="font-bold px-1.5 py-0.2 rounded border text-[10px]" [ngClass]="obtenerColorCategoria(obtenerCategoriaPadreCatalogo(resolverCatalogoId(recursoSeleccionado)))">
+                      {{ formatearTexto(obtenerCategoriaPadreCatalogo(resolverCatalogoId(recursoSeleccionado))) }}
+                    </span>
+                    <span>·</span>
+                    <span class="font-medium text-slate-600">{{ formatearTexto(obtenerTipoRecursoCatalogo(resolverCatalogoId(recursoSeleccionado))) }}</span>
+                  </p>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <span class="inline-flex px-3 py-1.5 rounded-full text-xs font-bold border"
+                      [ngClass]="obtenerClaseEstado(resolverEstado(recursoSeleccionado))">
+                  {{ formatearTexto(resolverEstado(recursoSeleccionado)) }}
+                </span>
+                <span class="inline-flex px-3 py-1.5 rounded-full text-xs font-bold border"
+                      [ngClass]="obtenerClaseSubestado(resolverSubestado(recursoSeleccionado))">
+                  {{ formatearTexto(resolverSubestado(recursoSeleccionado)) }}
+                </span>
+              </div>
+            </div>
+            <div class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="rounded-lg bg-civic-surface-soft border border-civic-border p-4">
+                <p class="text-xs text-civic-text-muted font-medium mb-1">Identificador / Placa</p>
+                <p class="font-semibold text-civic-text font-mono">{{ recursoSeleccionado.identificador }}</p>
+              </div>
+              <div class="rounded-lg bg-civic-surface-soft border border-civic-border p-4">
+                <p class="text-xs text-civic-text-muted font-medium mb-1">Personal a cargo</p>
+                <p class="font-semibold text-civic-text">{{ resolverEncargado(recursoSeleccionado) || 'No asignado' }}</p>
+              </div>
+              <div class="rounded-lg bg-civic-surface-soft border border-civic-border p-4">
+                <p class="text-xs text-civic-text-muted font-medium mb-1">Estado del registro</p>
+                <p class="font-semibold text-civic-text">{{ recursoSeleccionado.estado || '-' }}</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Entidad -->
+          <section class="rounded-2xl border border-slate-200 bg-white p-5">
+            <h4 class="text-base font-black text-slate-800 mb-4">Entidad propietaria</h4>
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+              <p class="font-bold text-slate-800">
+                {{ obtenerRazonSocialEntidad(resolverEntidadId(recursoSeleccionado)) }}
+              </p>
+              <p class="text-sm text-slate-500 mt-1">
+                {{ formatearTexto(obtenerTipoEntidad(resolverEntidadId(recursoSeleccionado))) }}
+              </p>
+            </div>
+          </section>
+
+          <!-- Zona operativa -->
+          <section class="rounded-2xl border border-slate-200 bg-white p-5">
+            <h4 class="text-base font-black text-slate-800 mb-4">Zona operativa</h4>
+            <ng-container *ngIf="resolverZona(recursoSeleccionado) as zona; else sinZonaVer">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Nombre</p>
+                  <p class="font-bold text-slate-800">{{ zona.zone || '-' }}</p>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Código</p>
+                  <p class="font-bold text-slate-800 font-mono">{{ zona.code || '-' }}</p>
+                </div>
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Distrito</p>
+                  <p class="font-bold text-slate-800">{{ zona.district || '-' }}</p>
+                </div>
+              </div>
+            </ng-container>
+            <ng-template #sinZonaVer>
+              <p class="text-sm text-slate-400 italic p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200">
+                Sin zona operativa asignada.
+              </p>
+            </ng-template>
+          </section>
+
+          <!-- Catálogo -->
+          <section class="rounded-2xl border border-slate-200 bg-white p-5">
+            <h4 class="text-base font-black text-slate-800 mb-4">Catálogo del recurso</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Recurso</p>
+                <p class="font-bold text-slate-800">{{ obtenerEtiquetaVisualCatalogo(resolverCatalogoId(recursoSeleccionado)) }}</p>
+              </div>
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Categoría</p>
+                <p class="font-bold text-slate-800">{{ formatearTexto(obtenerCategoriaPadreCatalogo(resolverCatalogoId(recursoSeleccionado))) }}</p>
+              </div>
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Tipo</p>
+                <p class="font-bold text-slate-800">{{ formatearTexto(obtenerTipoRecursoCatalogo(resolverCatalogoId(recursoSeleccionado))) }}</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Botones ver -->
+          <div class="flex justify-end gap-4 pt-4 border-t border-slate-100">
+            <button type="button" (click)="cerrarModal()"
+                    class="px-6 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">
+              Cerrar
+            </button>
+            <button *ngIf="puedeEditar(recursoSeleccionado) && resolverEstado(recursoSeleccionado) !== 'DADO_DE_BAJA'"
+                    type="button" (click)="abrirEditarDesdeDetalle()"
+                    class="civic-btn civic-btn--primary text-sm">
+              Editar Recurso
+            </button>
+            <span *ngIf="!puedeEditar(recursoSeleccionado)"
+                  class="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider">
+              Solo lectura
+            </span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,68 @@
+# See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+
+# Compiled output
+/dist
+/tmp
+/out-tsc
+/bazel-out
+
+# Node
+/node_modules
+npm-debug.log
+yarn-error.log
+
+# IDEs and editors
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/*
+
+# Miscellaneous
+/.angular/cache
+.sass-cache/
+/connect.lock
+/coverage
+/libpeerconnection.log
+testem.log
+/typings
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Cursor / Claude / agentes locales (skills, reglas, drafts)
+.agents/
+.cursor/
+.claude/
+.impeccable/
+.impeccable.md
+.taste-skill/
+skills-lock.json
+**/skills/
+.audit/
+.audit_oauth_token.json
+reporte_auditoria_angular.json
+*credentials*.json
+*credenciales*.json
+estandar/
+
+# Reportes / grafos locales de agentes
+graphify-out/
+
+# Standards documentation
+estandar*.md
+
+
+# Backend microservicio (no es parte del frontend)
+vg-ms-communication/

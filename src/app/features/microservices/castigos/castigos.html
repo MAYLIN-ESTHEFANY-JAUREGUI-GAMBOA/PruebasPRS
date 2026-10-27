@@ -1,0 +1,681 @@
+<div class="civic-page cas-page">
+  <h1 class="cas-sr-only">Castigos y sanciones</h1>
+
+  <section class="cas-board" aria-labelledby="cas-board-title">
+    <h2 id="cas-board-title" class="cas-sr-only">Expedientes</h2>
+
+    <header class="cas-bar">
+      <nav class="cas-tabs" role="tablist" aria-label="Tipo de listado">
+        <button type="button" role="tab" class="cas-tabs__btn"
+          [class.is-active]="subSeccionSanciones === 'vigentes'"
+          [attr.aria-selected]="subSeccionSanciones === 'vigentes'"
+          (click)="cambiarSubSeccionSanciones('vigentes')">
+          Sanciones vigentes
+          <span class="cas-tabs__count">{{ conteoVigentes() }}</span>
+        </button>
+        <button type="button" role="tab" class="cas-tabs__btn"
+          [class.is-active]="subSeccionSanciones === 'auditoria'"
+          [attr.aria-selected]="subSeccionSanciones === 'auditoria'"
+          (click)="cambiarSubSeccionSanciones('auditoria')">
+          Historial
+          <span class="cas-tabs__count">{{ historial.length }}</span>
+        </button>
+      </nav>
+
+      <div class="cas-bar__actions">
+        <button type="button" class="cas-icon-btn" (click)="cargarDatos()" [disabled]="estaActualizando()"
+          [attr.aria-label]="estaActualizando() ? 'Actualizando datos' : 'Actualizar listado'"
+          title="Se actualiza solo cada 30 segundos">
+          <svg class="cas-icon" [class.is-spinning]="estaActualizando()" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>
+          </svg>
+        </button>
+        <button *ngIf="reportesPanel.puedeExportar" type="button" class="cas-btn cas-btn--ghost" (click)="reportesPanel.togglePanel()">
+          <svg class="cas-icon" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+          </svg>
+          Reportes
+        </button>
+        <button *ngIf="esSuperAdmin || castigaPorAlerta" type="button" class="cas-btn cas-btn--primary" (click)="abrirNuevoCastigo()">
+          <svg class="cas-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+          </svg>
+          Nuevo castigo
+        </button>
+      </div>
+    </header>
+
+    <app-castigos-reportes #reportesPanel
+      [usuarios]="usuarios"
+      [sancionesActivas]="sancionesActivasFiltradas"
+      [historial]="historialFiltrado"
+      [castigosPorUsuario]="castigosPorUsuario"
+      [usuarioSeleccionadoParaReporte]="usuarioSeleccionado"
+      [hayFiltrosActivos]="hayFiltrosActivos()">
+    </app-castigos-reportes>
+
+    <!-- Vigentes -->
+    <div *ngIf="subSeccionSanciones === 'vigentes'" class="cas-panel" role="tabpanel">
+      <div class="cas-ladder" role="group" aria-label="Filtrar por tipo de sanción">
+        <button type="button" class="cas-ladder__step cas-ladder__step--all"
+          [class.is-active]="filtroNivel === 'TODOS'"
+          [attr.aria-pressed]="filtroNivel === 'TODOS'"
+          (click)="filtroNivel = 'TODOS'; aplicarFiltros()">
+          <span class="cas-ladder__n">{{ conteoVigentes() }}</span>
+          <span class="cas-ladder__copy">
+            <span class="cas-ladder__title">Todas</span>
+            <span class="cas-ladder__note">{{ conteoBloqueados() }} sin acceso a la app</span>
+          </span>
+        </button>
+        <button *ngFor="let n of nivelesEscalera" type="button" class="cas-ladder__step"
+          [attr.data-nivel]="n.codigo"
+          [class.is-active]="filtroNivel === '' + n.codigo"
+          [attr.aria-pressed]="filtroNivel === '' + n.codigo"
+          (click)="filtroNivel = $any('' + n.codigo); aplicarFiltros()">
+          <span class="cas-ladder__n">{{ conteoNivel(n.codigo) }}</span>
+          <span class="cas-ladder__copy">
+            <span class="cas-ladder__title"><span class="cas-ladder__mark" aria-hidden="true">{{ n.codigo }}</span>{{ n.titulo }}</span>
+            <span class="cas-ladder__note">{{ n.consecuencia }}</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="cas-toolbar">
+        <div class="civic-search cas-toolbar__search">
+          <svg class="civic-search__icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+          </svg>
+          <input id="cas-buscar-vigentes" type="search" class="civic-input" [(ngModel)]="busqueda"
+            (ngModelChange)="aplicarFiltros()" placeholder="Buscar por nombre o DNI" aria-label="Buscar sanciones vigentes" />
+        </div>
+        <p class="cas-toolbar__count" aria-live="polite">
+          {{ sancionesActivasFiltradas.length }} {{ sancionesActivasFiltradas.length === 1 ? 'expediente' : 'expedientes' }}
+        </p>
+        <button *ngIf="hayFiltrosActivos()" type="button" class="cas-link" (click)="limpiarFiltros()">Quitar filtros</button>
+      </div>
+
+      <div *ngIf="cargando" class="cas-skeleton" aria-busy="true" aria-label="Cargando expedientes">
+        <div *ngFor="let s of pickerSkeletons" class="cas-skeleton__row" aria-hidden="true">
+          <span class="cas-skeleton__avatar"></span>
+          <span class="cas-skeleton__line cas-skeleton__line--lg"></span>
+          <span class="cas-skeleton__line"></span>
+        </div>
+      </div>
+
+      <ng-container *ngIf="!cargando && sancionesActivasFiltradas.length > 0">
+        <ul class="cas-folders">
+          <ng-container *ngFor="let g of gruposVigentes; trackBy: trackByNivel">
+            <li *ngFor="let u of g.usuarios; trackBy: trackByUsuarioId" class="cas-folder" [attr.data-nivel]="g.nivel.codigo">
+              <span class="cas-folder__back" aria-hidden="true"></span>
+
+              <!-- Hoja: sale de la carpeta al pasar el ratón; al pulsarla abre el historial completo. -->
+              <button type="button" class="cas-folder__paper" (click)="abrirHistorialCiudadano(u)"
+                [attr.aria-label]="'Ver historial de ' + nombreUsuario(u)">
+                <span class="cas-folder__paper-title">
+                  Expediente
+                  <span class="cas-folder__paper-cta">Ver historial
+                    <svg class="cas-icon cas-icon--sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
+                    </svg>
+                  </span>
+                </span>
+                <span class="cas-folder__motivo" [class.is-empty]="!motivoCastigo(u)">{{ motivoCastigo(u) || 'Sin motivo registrado' }}</span>
+                <span class="cas-folder__log" *ngIf="historialPorUsuario[u.id]?.length; else sinMovs">
+                  <span *ngFor="let h of historialPorUsuario[u.id].slice(0, 3); trackBy: trackByHistorialId" class="cas-folder__log-item">
+                    <time class="cas-num">{{ formatearFecha(h.recordedAt) }}</time>
+                    <span>{{ accionEtiqueta(h.action) }} · {{ h.previousLevelLabel }} → {{ h.newLevelLabel }}</span>
+                  </span>
+                </span>
+                <ng-template #sinMovs><span class="cas-folder__log-empty">Sin movimientos registrados</span></ng-template>
+              </button>
+
+              <div class="cas-folder__front">
+                <div class="cas-folder__top">
+                  <span class="cas-folder__label">
+                    <span class="cas-folder__mark" aria-hidden="true">{{ g.nivel.codigo }}</span>
+                    {{ g.nivel.titulo }}
+                  </span>
+                  <span class="cas-folder__state" [attr.title]="fechaFinCastigo(u) ? 'Hasta ' + formatearFecha(fechaFinCastigo(u)) : null">
+                    {{ fechaFinCastigo(u) ? tiempoRestante(fechaFinCastigo(u)!) : (accesoPermitidoUsuario(u) ? 'Con acceso' : 'Sin acceso') }}
+                  </span>
+                </div>
+
+                <h3 class="cas-folder__name">{{ nombreUsuario(u) }}</h3>
+                <p class="cas-folder__dni">DNI <span class="cas-num">{{ u.dni }}</span></p>
+
+                <div class="cas-folder__actions" [class.is-single]="!puedeEscalarDesde(u) || !puedeLevantarDesde(u)">
+                  <button *ngIf="puedeEscalarDesde(u)" type="button" class="cas-btn cas-btn--escalar"
+                    [attr.data-next]="castigoDe(u)?.proximoNivel"
+                    [disabled]="guardando" (click)="abrirModalCastigo(u)"
+                    [attr.aria-label]="'Subir a ' + (castigoDe(u)?.proximoNivelEtiqueta || 'siguiente nivel') + ' a ' + nombreUsuario(u)">
+                    <svg class="cas-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 19.5v-15m0 0-6 6m6-6 6 6"/>
+                    </svg>
+                    Subir a nivel {{ castigoDe(u)?.proximoNivel }}
+                  </button>
+                  <button *ngIf="puedeLevantarDesde(u)" type="button" class="cas-btn cas-btn--sheet"
+                    (click)="confirmarQuitarSancion(u)" [disabled]="guardando"
+                    [attr.aria-label]="'Quitar sanción de ' + nombreUsuario(u)">
+                    <svg class="cas-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                    </svg>
+                    Quitar sanción
+                  </button>
+                </div>
+              </div>
+            </li>
+          </ng-container>
+        </ul>
+      </ng-container>
+
+      <div *ngIf="!cargando && sancionesActivasFiltradas.length === 0" class="cas-empty">
+        <ng-container *ngIf="hayFiltrosActivos(); else sinSanciones">
+          <p class="cas-empty__title">Nada coincide con la búsqueda</p>
+          <p class="cas-empty__text">Pruebe con otro nombre o DNI, o vea todos los tipos de sanción.</p>
+          <button type="button" class="cas-btn cas-btn--outline cas-btn--sm" (click)="limpiarFiltros()">Quitar filtros</button>
+        </ng-container>
+        <ng-template #sinSanciones>
+          <p class="cas-empty__title">Nadie tiene una sanción vigente</p>
+          <p class="cas-empty__text">Cuando registre un castigo, el ciudadano aparecerá aquí con su motivo y su plazo.</p>
+          <button *ngIf="esSuperAdmin || castigaPorAlerta" type="button" class="cas-btn cas-btn--outline cas-btn--sm" (click)="abrirNuevoCastigo()">Registrar castigo</button>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- Historial -->
+    <div *ngIf="subSeccionSanciones === 'auditoria'" class="cas-panel" role="tabpanel">
+      <div class="cas-toolbar">
+        <div class="civic-search cas-toolbar__search">
+          <svg class="civic-search__icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+          </svg>
+          <input id="cas-buscar-audit" type="search" class="civic-input" [(ngModel)]="busqueda"
+            (ngModelChange)="aplicarFiltros()" placeholder="Buscar por nombre, DNI o motivo" aria-label="Buscar en el historial" />
+        </div>
+        <div class="cas-seg" role="group" aria-label="Tipo de acción">
+          <button *ngFor="let f of filtrosAccion" type="button" class="cas-seg__btn"
+            [class.is-active]="filtroAccion === f.value"
+            [attr.aria-pressed]="filtroAccion === f.value"
+            (click)="filtroAccion = f.value; aplicarFiltros()">{{ f.value === 'TODOS' ? 'Todas' : accionEtiqueta(f.value) + 's' }}</button>
+        </div>
+        <p class="cas-toolbar__count" aria-live="polite">
+          {{ historialFiltrado.length }} {{ historialFiltrado.length === 1 ? 'registro' : 'registros' }}
+        </p>
+        <button *ngIf="hayFiltrosActivos()" type="button" class="cas-link" (click)="limpiarFiltros()">Quitar filtros</button>
+      </div>
+
+      <div *ngIf="cargando" class="cas-skeleton" aria-busy="true" aria-label="Cargando historial">
+        <div *ngFor="let s of pickerSkeletons" class="cas-skeleton__row" aria-hidden="true">
+          <span class="cas-skeleton__line cas-skeleton__line--sm"></span>
+          <span class="cas-skeleton__line cas-skeleton__line--lg"></span>
+          <span class="cas-skeleton__line"></span>
+        </div>
+      </div>
+
+      <div *ngIf="!cargando && historialFiltrado.length > 0" class="cas-log">
+        <section *ngFor="let grupo of historialPorDia()" class="cas-log__day" [attr.aria-label]="grupo.etiqueta">
+          <h3 class="cas-log__date">
+            {{ grupo.etiqueta }}
+            <span class="cas-log__date-count">{{ grupo.entradas.length }} {{ grupo.entradas.length === 1 ? 'acción' : 'acciones' }}</span>
+          </h3>
+
+          <ol class="cas-log__list">
+            <li *ngFor="let h of grupo.entradas; trackBy: trackByHistorialId" class="cas-log__item"
+              [attr.data-accion]="h.action" [attr.data-nivel]="h.newLevel">
+              <time class="cas-log__time cas-num" [attr.datetime]="h.recordedAt" [attr.title]="formatearFechaCompleta(h.recordedAt)">{{ formatearFechaAuditoria(h.recordedAt).hora }}</time>
+              <span class="cas-log__avatar" aria-hidden="true">{{ iniciales(h.fullName) }}</span>
+
+              <div class="cas-log__body">
+                <p class="cas-log__who">
+                  <span class="cas-log__name">{{ h.fullName || 'Ciudadano' }}</span>
+                  <span class="cas-log__dni">DNI <span class="cas-num">{{ h.dni }}</span></span>
+                </p>
+                <p class="cas-log__change">
+                  <span class="cas-log__verb">{{ accionDetalle(h.action) || accionEtiqueta(h.action) }}</span>
+                  <span class="cas-lvl" [attr.data-nivel]="h.previousLevel">{{ h.previousLevelLabel }}</span>
+                  <svg class="cas-icon cas-icon--sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-label="pasa a">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
+                  </svg>
+                  <span class="cas-lvl" [attr.data-nivel]="h.newLevel">{{ h.newLevelLabel }}</span>
+                </p>
+                <p *ngIf="h.incidenteId" class="cas-log__motivo">Desde una alerta del incidente <span class="cas-num">…{{ h.incidenteId.slice(-6) }}</span></p>
+                <p *ngIf="h.reason" class="cas-log__motivo"
+                  [class.is-clamped]="motivoLargo(h.reason) && !isMotivoExpandido(h.id)">{{ h.reason }}</p>
+                <button *ngIf="h.reason && motivoLargo(h.reason)" type="button" class="cas-link cas-link--sm"
+                  (click)="toggleMotivo(h.id, $event)" [attr.aria-expanded]="isMotivoExpandido(h.id)">
+                  {{ isMotivoExpandido(h.id) ? 'Ver menos' : 'Ver todo' }}
+                </button>
+              </div>
+
+              <button type="button" class="cas-btn cas-btn--ghost cas-btn--sm cas-log__open"
+                (click)="verExpediente(h)" [attr.aria-label]="'Ver expediente de ' + (h.fullName || 'ciudadano')">
+                Ver expediente
+                <svg class="cas-icon cas-icon--sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
+                </svg>
+              </button>
+            </li>
+          </ol>
+        </section>
+      </div>
+
+      <div *ngIf="!cargando && historialFiltrado.length === 0" class="cas-empty">
+        <ng-container *ngIf="hayFiltrosActivos(); else sinHistorial">
+          <p class="cas-empty__title">Nada coincide con la búsqueda</p>
+          <p class="cas-empty__text">Pruebe con otro nombre, DNI o tipo de acción.</p>
+          <button type="button" class="cas-btn cas-btn--outline cas-btn--sm" (click)="limpiarFiltros()">Quitar filtros</button>
+        </ng-container>
+        <ng-template #sinHistorial>
+          <p class="cas-empty__title">Aún no hay acciones registradas</p>
+          <p class="cas-empty__text">Cada sanción que se aplique o se quite quedará anotada aquí, con fecha, hora y motivo.</p>
+        </ng-template>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Modal: castigo del personal, siempre por una alerta de una emergencia de su alcance -->
+<div *ngIf="modalAlertaAbierto" ngSkipHydration
+     class="civic-modal-backdrop cas-modal-backdrop"
+     role="dialog" aria-modal="true" aria-labelledby="modal-alerta-title"
+     (click)="cerrarCastigoPorAlerta()">
+  <div class="civic-modal civic-modal--md cas-modal" (click)="$event.stopPropagation()">
+    <header class="cas-modal__header">
+      <div>
+        <h2 id="modal-alerta-title" class="cas-modal__title">
+          {{ alertaElegida ? 'Motivo del castigo' : incidenteElegido ? '¿Qué alerta fue falsa?' : '¿En qué emergencia?' }}
+        </h2>
+        <p class="cas-modal__sub">
+          {{ incidenteElegido ? (etiquetaTipo(incidenteElegido.emergencyType) + ' · ' + incidenteElegido.trackingCode) : 'Se castiga al ciudadano que emitió la alerta.' }}
+        </p>
+      </div>
+      <button type="button" class="cas-icon-btn" (click)="cerrarCastigoPorAlerta()" aria-label="Cerrar">
+        <svg class="cas-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="cas-modal__body cas-picker">
+      <button *ngIf="incidenteElegido" type="button" class="cas-btn cas-btn--ghost cas-btn--sm"
+        (click)="atras()" [disabled]="guardando">
+        ← {{ alertaElegida ? 'Otra alerta' : 'Otra emergencia' }}
+      </button>
+
+      <ul *ngIf="cargandoAlertas" class="cas-picker__list" aria-busy="true" aria-label="Cargando">
+        <li *ngFor="let s of pickerSkeletons" class="cas-skeleton__row" aria-hidden="true">
+          <span class="cas-skeleton__line cas-skeleton__line--lg"></span>
+          <span class="cas-skeleton__line cas-skeleton__line--sm"></span>
+        </li>
+      </ul>
+
+      <ng-container *ngIf="!cargandoAlertas">
+        <!-- Paso 1: emergencia -->
+        <ng-container *ngIf="!incidenteElegido">
+          <p *ngIf="!incidentesConAlertas.length" class="cas-picker__meta">No hay emergencias con alertas de ciudadanos en tu alcance.</p>
+          <ul *ngIf="incidentesConAlertas.length" class="cas-picker__list custom-scrollbar" aria-label="Emergencias">
+            <li *ngFor="let inc of incidentesConAlertas">
+              <button type="button" class="cas-picker__item" (click)="elegirIncidente(inc)">
+                <span class="cas-picker__text">
+                  <span class="cas-picker__name">{{ etiquetaTipo(inc.emergencyType) }}</span>
+                  <span class="cas-picker__ids">
+                    <span class="cas-num">{{ inc.trackingCode }}</span>
+                    <span>{{ inc.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                    <span>{{ inc.alertIds?.length }} {{ inc.alertIds?.length === 1 ? 'alerta' : 'alertas' }}</span>
+                  </span>
+                </span>
+                <svg class="cas-picker__chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
+                </svg>
+              </button>
+            </li>
+          </ul>
+        </ng-container>
+
+        <!-- Paso 2: alerta y ciudadano -->
+        <ng-container *ngIf="incidenteElegido && !alertaElegida">
+          <p *ngIf="!alertasDelIncidente.length && !errorAlerta" class="cas-picker__meta">Esta emergencia no tiene alertas emitidas por ciudadanos.</p>
+          <ul *ngIf="alertasDelIncidente.length" class="cas-picker__list custom-scrollbar" aria-label="Alertas">
+            <li *ngFor="let a of alertasDelIncidente">
+              <button type="button" class="cas-picker__item" (click)="alertaElegida = a; motivoAlerta = ''; errorAlerta = ''">
+                <span class="cas-picker__text">
+                  <span class="cas-picker__name">{{ nombreAlertante(a) }}</span>
+                  <span class="cas-picker__ids">
+                    <span class="cas-num">{{ a.alertCode }}</span>
+                    <span>{{ a.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                  </span>
+                </span>
+                <span *ngIf="a.reporter?.penaltySystem?.nivel_castigo" class="cas-lvl cas-picker__chip"
+                  [attr.data-nivel]="a.reporter?.penaltySystem?.nivel_castigo">{{ etiquetaNivel(a.reporter!.penaltySystem!.nivel_castigo!) }}</span>
+                <svg class="cas-picker__chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
+                </svg>
+              </button>
+            </li>
+          </ul>
+        </ng-container>
+
+        <!-- Paso 3: motivo -->
+        <div *ngIf="alertaElegida" class="cas-field">
+          <p class="cas-picker__meta">
+            <strong>{{ nombreAlertante(alertaElegida) }}</strong> · alerta <span class="cas-num">{{ alertaElegida.alertCode }}</span>
+          </p>
+          <p *ngIf="alertaElegida.description" class="cas-picker__meta">“{{ alertaElegida.description }}”</p>
+          <label class="cas-field__label" for="castigo-alerta-motivo">Motivo de la sanción</label>
+          <textarea id="castigo-alerta-motivo" rows="3" class="civic-input cas-field__textarea"
+            [(ngModel)]="motivoAlerta" maxlength="500" placeholder="Por qué la alerta fue falsa y cómo se verificó"></textarea>
+          <p class="cas-field__hint">Sube un nivel: aviso → bloqueo temporal 24 h → bloqueo permanente.</p>
+        </div>
+      </ng-container>
+
+      <p *ngIf="errorAlerta" class="cas-alert cas-alert--warn" role="alert">{{ errorAlerta }}</p>
+    </div>
+
+    <footer *ngIf="alertaElegida" class="cas-modal__footer">
+      <button type="button" class="cas-btn cas-btn--ghost" (click)="cerrarCastigoPorAlerta()" [disabled]="guardando">Cancelar</button>
+      <button type="button" class="cas-btn cas-btn--primary" (click)="confirmarCastigoPorAlerta()"
+        [disabled]="guardando || motivoAlerta.trim().length < 10">{{ guardando ? 'Aplicando…' : 'Confirmar castigo' }}</button>
+    </footer>
+  </div>
+</div>
+
+<!-- Modal: seleccionar ciudadano -->
+<div *ngIf="modalSeleccionUsuarioAbierto" ngSkipHydration
+     class="civic-modal-backdrop cas-modal-backdrop"
+     role="dialog" aria-modal="true" aria-labelledby="modal-seleccion-title"
+     (click)="cerrarSeleccionUsuario()">
+  <div class="civic-modal civic-modal--md cas-modal" (click)="$event.stopPropagation()">
+    <header class="cas-modal__header">
+      <div>
+        <h2 id="modal-seleccion-title" class="cas-modal__title">¿A quién se aplicará el castigo?</h2>
+        <p class="cas-modal__sub">Busque por nombre, DNI o teléfono.</p>
+      </div>
+      <button type="button" class="cas-icon-btn" (click)="$event.stopPropagation(); cerrarSeleccionUsuario()" aria-label="Cerrar">
+        <svg class="cas-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="cas-modal__body cas-picker">
+      <div class="civic-search">
+        <svg class="civic-search__icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+        </svg>
+        <input type="search" class="civic-input" [(ngModel)]="busquedaSeleccionUsuario"
+          (ngModelChange)="aplicarFiltroSeleccionUsuario()"
+          placeholder="Nombre, DNI o teléfono" aria-label="Buscar ciudadano" autofocus />
+      </div>
+
+      <p class="cas-picker__meta" *ngIf="!mostrarSkeletonPicker()" aria-live="polite">
+        {{ ciudadanosParaSeleccion.length === 0
+          ? 'Sin resultados'
+          : (ciudadanosVisibles.length + ' de ' + ciudadanosParaSeleccion.length + ' ciudadanos') }}
+      </p>
+
+      <ul *ngIf="mostrarSkeletonPicker()" class="cas-picker__list" aria-busy="true" aria-label="Cargando ciudadanos">
+        <li *ngFor="let s of pickerSkeletons" class="cas-skeleton__row" aria-hidden="true">
+          <span class="cas-skeleton__avatar"></span>
+          <span class="cas-skeleton__line cas-skeleton__line--lg"></span>
+          <span class="cas-skeleton__line cas-skeleton__line--sm"></span>
+        </li>
+      </ul>
+
+      <ul *ngIf="!mostrarSkeletonPicker() && ciudadanosVisibles.length > 0" class="cas-picker__list custom-scrollbar" aria-label="Ciudadanos">
+        <li *ngFor="let u of ciudadanosVisibles; trackBy: trackByUsuarioId">
+          <button type="button" class="cas-picker__item" (click)="seleccionarUsuarioParaCastigo(u)">
+            <span class="cas-avatar cas-avatar--sm" aria-hidden="true">
+              <img *ngIf="tieneFoto(u)" [src]="u.fotoPerfilUrl!" alt="" (error)="onFotoError(u.id)" />
+              <span *ngIf="!tieneFoto(u)">{{ inicialesUsuario(u) }}</span>
+            </span>
+            <span class="cas-picker__text">
+              <span class="cas-picker__name">{{ nombreUsuario(u) }}</span>
+              <span class="cas-picker__ids">
+                <span>DNI <span class="cas-num">{{ u.dni }}</span></span>
+                <span *ngIf="u.telefono" class="cas-num">{{ u.telefono }}</span>
+              </span>
+            </span>
+            <span *ngIf="nivelUsuario(u) > 0" class="cas-lvl cas-picker__chip" [attr.data-nivel]="nivelUsuario(u)">{{ etiquetaNivel(nivelUsuario(u)) }}</span>
+            <svg class="cas-picker__chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
+            </svg>
+          </button>
+        </li>
+      </ul>
+
+      <button *ngIf="!mostrarSkeletonPicker() && hayMasCiudadanos()" type="button"
+        class="cas-btn cas-btn--ghost cas-picker__more"
+        (click)="cargarMasCiudadanos()">
+        Mostrar más · quedan {{ restantesCiudadanos() }}
+      </button>
+
+      <div *ngIf="!mostrarSkeletonPicker() && ciudadanosParaSeleccion.length === 0" class="cas-empty cas-empty--compact">
+        <p class="cas-empty__title">No se encontraron ciudadanos</p>
+        <p class="cas-empty__text">
+          {{ busquedaSeleccionUsuario.trim()
+            ? 'Ningún ciudadano coincide con «' + busquedaSeleccionUsuario.trim() + '».'
+            : 'No hay ciudadanos disponibles en el directorio.' }}
+        </p>
+      </div>
+    </div>
+
+    <footer class="cas-modal__footer">
+      <button type="button" class="cas-btn cas-btn--ghost" (click)="cerrarSeleccionUsuario()">Cancelar</button>
+    </footer>
+  </div>
+</div>
+
+<!-- Modal: sanción -->
+<div *ngIf="modalCastigoAbierto" ngSkipHydration
+     class="civic-modal-backdrop cas-modal-backdrop"
+     role="dialog" aria-modal="true" aria-labelledby="castigo-modal-title"
+     (click)="cerrarModalCastigo()">
+  <div class="civic-modal civic-modal--md cas-modal" (click)="$event.stopPropagation()"
+    [attr.data-vista]="historialModalAbierto ? 'historial' : 'sancion'" [attr.data-nivel]="historialModalAbierto ? castigoActual?.nivelCastigo : (sancionAplicada?.nivel ?? castigoActual?.proximoNivel ?? castigoActual?.nivelCastigo)">
+    <header class="cas-modal__header" *ngIf="usuarioSeleccionado && castigoActual">
+      <div class="cas-modal__who">
+        <span class="cas-avatar" aria-hidden="true">
+          <img *ngIf="tieneFoto(usuarioSeleccionado)" [src]="usuarioSeleccionado.fotoPerfilUrl!" alt="" (error)="onFotoError(usuarioSeleccionado.id)" />
+          <span *ngIf="!tieneFoto(usuarioSeleccionado)">{{ inicialesUsuario(usuarioSeleccionado) }}</span>
+        </span>
+        <div>
+          <h2 id="castigo-modal-title" class="cas-modal__title">{{ nombreUsuario(usuarioSeleccionado) }}</h2>
+          <p class="cas-modal__sub">
+            DNI <span class="cas-num">{{ usuarioSeleccionado.dni }}</span> ·
+            {{ castigoActual.accesoPermitido ? 'Puede usar la app' : 'Sin acceso a la app' }}
+          </p>
+        </div>
+      </div>
+      <button type="button" class="cas-icon-btn" (click)="$event.stopPropagation(); cerrarModalCastigo()" aria-label="Cerrar">
+        <svg class="cas-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="cas-modal__body custom-scrollbar" *ngIf="castigoActual">
+      <div *ngIf="mensajeExito && !sancionAplicada" class="cas-alert cas-alert--ok" role="status">{{ mensajeExito }}</div>
+      <!-- Vista historial: la hoja del expediente, solo lectura, separada de la sanción. -->
+      <ng-container *ngIf="historialModalAbierto; else vistaSancion">
+        <div *ngIf="avisoHistorialModal" class="cas-alert cas-alert--warn" role="status">{{ avisoHistorialModal }}</div>
+
+        <section class="cas-dossier" [attr.data-nivel]="castigoActual.nivelCastigo" aria-label="Resumen del expediente">
+          <div class="cas-dossier__now">
+            <span class="cas-dossier__label">Situación actual</span>
+            <strong class="cas-dossier__level">{{ castigoActual.nivelEtiqueta || etiquetaNivel(castigoActual.nivelCastigo) }}</strong>
+            <span class="cas-dossier__meter" aria-hidden="true">
+              <span *ngFor="let n of nivelesEscalera" class="cas-dossier__seg" [attr.data-nivel]="n.codigo"
+                [class.is-on]="n.codigo <= castigoActual.nivelCastigo"></span>
+            </span>
+          </div>
+          <dl class="cas-dossier__stats">
+            <div><dt>Movimientos</dt><dd class="cas-num">{{ historialUsuario.length }}</dd></div>
+            <div><dt>Sanciones</dt><dd class="cas-num">{{ contarAccion('APLICAR') + contarAccion('ACTUALIZAR') }}</dd></div>
+            <div><dt>Retiradas</dt><dd class="cas-num">{{ contarAccion('LEVANTAR') }}</dd></div>
+          </dl>
+        </section>
+
+        <ol *ngIf="historialUsuario.length > 0; else sinHistorial" class="cas-ledger" [attr.aria-busy]="cargandoHistorial">
+          <li *ngFor="let h of historialUsuario; trackBy: trackByHistorialId" class="cas-ledger__item"
+            [attr.data-nivel]="h.newLevel" [attr.data-accion]="h.action">
+            <time class="cas-ledger__date" [attr.datetime]="h.recordedAt" [attr.title]="formatearFechaCompleta(h.recordedAt)">
+              <span class="cas-ledger__day cas-num">{{ parteFecha(h.recordedAt, 'dia') }}</span>
+              <span class="cas-ledger__month">{{ parteFecha(h.recordedAt, 'mes') }}</span>
+              <span class="cas-ledger__hour cas-num">{{ parteFecha(h.recordedAt, 'hora') }}</span>
+            </time>
+            <span class="cas-ledger__node" aria-hidden="true"></span>
+            <div class="cas-ledger__body">
+              <p class="cas-ledger__verb">{{ accionDetalle(h.action) || accionEtiqueta(h.action) }}</p>
+              <p class="cas-ledger__change">
+                <span class="cas-lvl" [attr.data-nivel]="h.previousLevel">{{ h.previousLevelLabel }}</span>
+                <svg class="cas-icon cas-icon--sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-label="pasa a">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
+                </svg>
+                <span class="cas-lvl" [attr.data-nivel]="h.newLevel">{{ h.newLevelLabel }}</span>
+              </p>
+              <blockquote *ngIf="h.reason" class="cas-ledger__motivo">{{ h.reason }}</blockquote>
+            </div>
+          </li>
+        </ol>
+        <ng-template #sinHistorial>
+          <div *ngIf="cargandoHistorial; else vacioHistorial" class="cas-skeleton" aria-busy="true" aria-label="Cargando historial">
+            <div *ngFor="let s of [1, 2, 3]" class="cas-skeleton__row" aria-hidden="true">
+              <span class="cas-skeleton__line cas-skeleton__line--sm"></span>
+              <span class="cas-skeleton__line cas-skeleton__line--lg"></span>
+            </div>
+          </div>
+          <ng-template #vacioHistorial><p class="cas-empty__text">Aún no hay movimientos registrados.</p></ng-template>
+        </ng-template>
+      </ng-container>
+
+      <ng-template #vistaSancion>
+      <!-- Comprobante: confirma qué se aplicó y qué cambia para el ciudadano. -->
+      <div *ngIf="sancionAplicada as ok; else formSancion" class="cas-receipt" [attr.data-nivel]="ok.nivel" role="status">
+        <span class="cas-receipt__seal" aria-hidden="true">
+          <svg fill="none" stroke="currentColor" stroke-width="2.25" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
+          </svg>
+        </span>
+        <p class="cas-receipt__title">Sanción aplicada</p>
+        <p class="cas-receipt__level"><span class="cas-lvl" [attr.data-nivel]="ok.nivel">{{ ok.etiqueta }}</span></p>
+        <dl class="cas-receipt__facts">
+          <div>
+            <dt>Acceso a la app</dt>
+            <dd>{{ ok.nivel === 1 ? 'Conserva el acceso' : ok.nivel === 2 ? 'Bloqueado' + (ok.horas ? ' ' + ok.horas + ' h' : '') : 'Revocado sin fecha de fin' }}</dd>
+          </div>
+          <div *ngIf="ok.fin">
+            <dt>Vuelve a tener acceso</dt>
+            <dd class="cas-num">{{ formatearFecha(ok.fin) }}</dd>
+          </div>
+          <div class="cas-receipt__wide">
+            <dt>Motivo registrado</dt>
+            <dd>{{ ok.motivo }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <ng-template #formSancion>
+      <div *ngIf="nivelProximoInfo() as prox" class="cas-action-head">
+        <h3 class="cas-action-head__title">Subir a {{ prox.titulo | lowercase }}</h3>
+      </div>
+      <ol class="cas-steps" aria-label="Escalera de sanciones">
+        <li *ngFor="let n of nivelesEscalera" class="cas-steps__item" [attr.data-nivel]="n.codigo"
+          [class.is-done]="n.codigo <= castigoActual.nivelCastigo"
+          [class.is-current]="n.codigo === castigoActual.nivelCastigo"
+          [class.is-next]="puedeEscalar() && n.codigo === castigoActual.proximoNivel"
+          [attr.aria-current]="n.codigo === castigoActual.nivelCastigo ? 'step' : null">
+          <span class="cas-steps__mark" aria-hidden="true">{{ n.codigo }}</span>
+          <span class="cas-steps__title">{{ n.titulo }}</span>
+          <span class="cas-steps__note">
+            {{ n.codigo === castigoActual.nivelCastigo ? 'Actual'
+              : (puedeEscalar() && n.codigo === castigoActual.proximoNivel ? 'Nuevo nivel' : n.consecuencia) }}
+          </span>
+        </li>
+      </ol>
+
+
+      <div *ngIf="puedeEscalar()" class="cas-form">
+        <div class="cas-field">
+          <label class="cas-field__label" for="castigo-motivo"><span class="cas-field__num">1</span>Motivo de la sanción</label>
+          <div class="cas-chips" role="group" aria-label="Motivos frecuentes">
+            <button *ngFor="let m of motivosFrecuentes" type="button" class="cas-chip" (click)="usarMotivo(m)">{{ m }}</button>
+          </div>
+          <textarea id="castigo-motivo" rows="3" class="civic-input cas-field__textarea"
+            [(ngModel)]="formMotivo" maxlength="500" placeholder="Qué hizo, cuándo y cómo se verificó"></textarea>
+          <p class="cas-field__hint">
+            <span>Obligatorio, mínimo 10 caracteres.</span>
+            <span class="cas-num cas-field__counter" [class.is-ok]="formMotivo.trim().length >= 10">{{ formMotivo.trim().length }}/500</span>
+          </p>
+        </div>
+        <div *ngIf="castigoActual.proximoNivel === 2" class="cas-field">
+          <span class="cas-field__label" id="cas-duracion-label"><span class="cas-field__num">2</span>Tiempo sin acceso a la app</span>
+          <div class="cas-seg cas-seg--duration" role="group" aria-labelledby="cas-duracion-label">
+            <button *ngFor="let p of horasPresets" type="button" class="cas-seg__btn"
+              [class.is-active]="formHorasBloqueo === p.horas" [attr.aria-pressed]="formHorasBloqueo === p.horas"
+              (click)="seleccionarHorasPreset(p.horas)">{{ p.etiqueta }}</button>
+            <label class="cas-duration__custom">
+              <input type="number" min="1" max="720" class="cas-duration__input"
+                [(ngModel)]="formHorasBloqueo" aria-label="Horas personalizadas" />
+              <span>horas</span>
+            </label>
+          </div>
+          <p class="cas-field__hint">Vuelve a tener acceso el <strong class="cas-num">{{ fechaFinBloqueoEstimada() }}</strong></p>
+        </div>
+
+      </div>
+
+      <p *ngIf="esSuperAdmin && !puedeEscalar() && !guardando" class="cas-alert cas-alert--warn">
+        {{ castigoActual.proximoNivel ? 'Hay un bloqueo vigente. Quite la sanción actual antes de aplicar otra.' : 'Ya tiene la sanción más alta.' }}
+      </p>
+
+      <p *ngIf="errorModal" class="cas-alert cas-alert--error" role="alert">{{ errorModal }}</p>
+      </ng-template>
+      </ng-template>
+    </div>
+
+    <footer class="cas-modal__footer" *ngIf="castigoActual">
+      <ng-container *ngIf="sancionAplicada && !historialModalAbierto; else pieNormal">
+        <button type="button" class="cas-btn cas-btn--ghost" (click)="verHistorialTrasAplicar()">Ver historial</button>
+        <button type="button" class="cas-btn cas-btn--primary" (click)="cerrarModalCastigo()">Listo</button>
+      </ng-container>
+      <ng-template #pieNormal>
+      <p *ngIf="!historialModalAbierto && puedeEscalar() && !puedeConfirmarEscalar() && !guardando" class="cas-modal__footer-hint">
+        Escriba el motivo para continuar
+      </p>
+      <button type="button" class="cas-btn cas-btn--ghost" (click)="cerrarModalCastigo()" [disabled]="guardando">
+        {{ historialModalAbierto ? 'Cerrar' : 'Cancelar' }}
+      </button>
+      <button *ngIf="puedeEscalar() && !historialModalAbierto && !sancionAplicada" type="button" class="cas-btn cas-btn--escalar"
+        [attr.data-next]="castigoActual.proximoNivel"
+        (click)="ejecutarAccionModal()" [disabled]="guardando || !puedeConfirmarEscalar()">
+        {{ guardando ? 'Guardando…' : textoBotonConfirmar() }}
+        <span *ngIf="!guardando" class="cas-btn__cap" aria-hidden="true">
+          <svg class="cas-icon cas-icon--sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19.5v-15m0 0-6 6m6-6 6 6"/>
+          </svg>
+        </span>
+      </button>
+      </ng-template>
+    </footer>
+  </div>
+</div>
+
+<!-- Modal: confirmación -->
+<div *ngIf="modalConfirmacion" ngSkipHydration
+     class="civic-modal-backdrop cas-modal-backdrop"
+     role="alertdialog" aria-modal="true" aria-labelledby="castigo-confirm-title" aria-describedby="castigo-confirm-desc"
+     (click)="cerrarConfirmacion()">
+  <div class="civic-modal civic-modal--sm cas-confirm" [attr.data-variante]="modalConfirmacion.variante || 'primary'"
+    (click)="$event.stopPropagation()">
+    <h2 id="castigo-confirm-title" class="cas-confirm__title">{{ modalConfirmacion.titulo }}</h2>
+    <p id="castigo-confirm-desc" class="cas-confirm__text">{{ modalConfirmacion.mensaje }}</p>
+    <footer class="cas-confirm__footer">
+      <button type="button" class="cas-btn cas-btn--ghost" (click)="cerrarConfirmacion()">Cancelar</button>
+      <button type="button" class="cas-btn"
+        [class.cas-btn--primary]="!modalConfirmacion.variante || modalConfirmacion.variante === 'primary'"
+        [class.cas-btn--ok]="modalConfirmacion.variante === 'ok'"
+        [class.cas-btn--danger]="modalConfirmacion.variante === 'danger'"
+        (click)="confirmarAccion()">{{ modalConfirmacion.confirmarLabel }}</button>
+    </footer>
+  </div>
+</div>

@@ -1,0 +1,38 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.drawer-hidden{ transform: translateX(100%); }
+
+.incident-item[data-active="true"]{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+}
+
+@keyframes slideInDetail{
+  from{ opacity:0; transform: translateX(18px); }
+  to{ opacity:1; transform: translateX(0); }
+}
+.anim-slide-in{ animation: slideInDetail .42s cubic-bezier(.4,0,.2,1) both; }
+
+.lobby-card{ transition: transform .18s ease, box-shadow .18s ease; }
+.lobby-card:hover{ transform: translateY(-2px); box-shadow: 0 8px 20px -8px rgba(15,23,42,.15); }
+
+.stat-card[data-active="true"]{ box-shadow: 0 0 0 2px currentColor inset; }
+
+.pulse-dot{ position:relative; display:inline-flex; height:8px; width:8px; }
+.pulse-dot::before{
+  content:''; position:absolute; inset:-4px; border-radius:999px;
+  background:currentColor; opacity:.35; animation:pulseDot 1.6s ease-out infinite;
+}
+.pulse-dot::after{ content:''; position:absolute; inset:0; border-radius:999px; background:currentColor; }
+@keyframes pulseDot{ 0%{transform:scale(.6);opacity:.6;} 100%{transform:scale(2.2);opacity:0;} }
+
+.map-fake{
+  background-image:
+    linear-gradient(rgba(148,163,184,.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148,163,184,.35) 1px, transparent 1px),
+    linear-gradient(135deg,#e2e8f0,#cbd5e1);
+  background-size: 26px 26px, 26px 26px, 100% 100%;
+}

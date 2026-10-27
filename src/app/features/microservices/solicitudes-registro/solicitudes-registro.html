@@ -1,0 +1,515 @@
+<div class="civic-page sol-page">
+  <h1 class="sol-sr-only">Solicitudes de registro</h1>
+  <a class="sol-skip" href="#sol-queue-title">Ir a la cola de revisión</a>
+  <a class="sol-skip" href="#sol-dossier">Ir al expediente</a>
+
+  <section class="sol-shell" aria-label="Cola de verificación">
+    <header class="sol-bar">
+      <div class="sol-tabs" role="tablist" aria-label="Estado de solicitudes" (keydown)="navegarTabs($event)">
+        <button type="button" role="tab" class="sol-tabs__btn" id="sol-tab-pendientes"
+          [class.is-active]="filtro === 'PENDIENTE_APROBACION'"
+          [attr.aria-selected]="filtro === 'PENDIENTE_APROBACION'"
+          [attr.tabindex]="filtro === 'PENDIENTE_APROBACION' ? 0 : -1"
+          aria-controls="sol-queue-panel"
+          (click)="cambiarFiltro('PENDIENTE_APROBACION')">
+          Pendientes
+          <span class="sol-tabs__count">{{ conteoPendientes }}</span>
+        </button>
+        <button type="button" role="tab" class="sol-tabs__btn" id="sol-tab-rechazadas"
+          [class.is-active]="filtro === 'RECHAZADO'"
+          [attr.aria-selected]="filtro === 'RECHAZADO'"
+          [attr.tabindex]="filtro === 'RECHAZADO' ? 0 : -1"
+          aria-controls="sol-queue-panel"
+          (click)="cambiarFiltro('RECHAZADO')">
+          Rechazadas
+          <span class="sol-tabs__count">{{ conteoRechazadas }}</span>
+        </button>
+      </div>
+      <div class="sol-bar__actions">
+        <button type="button" class="sol-icon-btn" (click)="cargar()" [disabled]="cargando"
+          [attr.aria-label]="cargando ? 'Actualizando' : 'Refrescar solicitudes'">
+          <svg class="sol-icon" [class.is-spinning]="cargando" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="sol-board" [class.is-detail]="!!seleccionada" aria-label="Solicitudes y expediente">
+
+      <aside class="sol-queue" aria-labelledby="sol-queue-title">
+        <h2 id="sol-queue-title" class="sol-sr-only" tabindex="-1">Cola de revisión</h2>
+
+        <!-- Peldaños de espera: filtro compacto sobre la cola que filtran. -->
+        @if (filtro === 'PENDIENTE_APROBACION') {
+          <div class="sol-ladder" role="group" aria-label="Filtrar por tiempo en cola">
+            <button type="button" class="sol-ladder__step"
+              [class.is-active]="filtroEspera === 'todos'"
+              [attr.aria-pressed]="filtroEspera === 'todos'"
+              (click)="verPendientes()">
+              <span class="sol-ladder__n">{{ conteoPendientes }}</span>
+              <span class="sol-ladder__copy">
+                <span class="sol-ladder__title">En cola</span>
+                <span class="sol-ladder__note">Esperan revisión</span>
+              </span>
+            </button>
+            <button type="button" class="sol-ladder__step" data-tono="urgente"
+              [class.is-active]="filtroEspera === 'antiguos'"
+              [attr.aria-pressed]="filtroEspera === 'antiguos'"
+              (click)="verEspera('antiguos')">
+              <span class="sol-ladder__n">{{ conteoUrgentes }}</span>
+              <span class="sol-ladder__copy">
+                <span class="sol-ladder__title">Más de 3 días</span>
+                <span class="sol-ladder__note">Atender primero</span>
+              </span>
+            </button>
+            <button type="button" class="sol-ladder__step" data-tono="nueva"
+              [class.is-active]="filtroEspera === 'recientes'"
+              [attr.aria-pressed]="filtroEspera === 'recientes'"
+              (click)="verEspera('recientes')">
+              <span class="sol-ladder__n">{{ conteoRecientes }}</span>
+              <span class="sol-ladder__copy">
+                <span class="sol-ladder__title">Últimas 24 h</span>
+                <span class="sol-ladder__note">Recién llegadas</span>
+              </span>
+            </button>
+          </div>
+        }
+
+        <div class="sol-queue__search">
+          <div class="sol-search__bar">
+            <label class="sol-search__label" for="sol-buscar">Buscar en la cola</label>
+            <button type="button" class="sol-filter-toggle" id="sol-filter-toggle"
+              [class.is-open]="filtrosAbiertos"
+              [class.has-active]="hayFiltrosExtra"
+              [attr.aria-expanded]="filtrosAbiertos"
+              [attr.aria-label]="filtrosAbiertos ? 'Ocultar filtros' : 'Mostrar más filtros'"
+              aria-controls="sol-filtros"
+              (click)="toggleFiltros()">
+              <svg class="sol-icon" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"/>
+              </svg>
+              Filtros
+              @if (hayFiltrosExtra) {
+                <span class="sol-filter-toggle__count" aria-hidden="true">{{ conteoFiltrosActivos }}</span>
+              }
+              <svg class="sol-filter-toggle__chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+              </svg>
+            </button>
+          </div>
+          <div class="civic-search">
+            <svg class="civic-search__icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+            </svg>
+            <input id="sol-buscar" type="search" class="civic-input" [(ngModel)]="busqueda"
+              placeholder="Buscar nombre o DNI" autocomplete="off" />
+          </div>
+          <div class="sol-filters-clip" id="sol-filtros"
+            [class.is-open]="filtrosAbiertos"
+            [attr.aria-hidden]="!filtrosAbiertos"
+            [attr.inert]="filtrosAbiertos ? null : ''">
+            <div class="sol-filters">
+              <fieldset class="sol-filters__group">
+                <legend>Tiempo en cola</legend>
+                <div class="sol-chips" role="group" aria-label="Filtrar por espera">
+                  <button type="button" class="sol-chips__btn" [class.is-active]="filtroEspera === 'todos'"
+                    [attr.aria-pressed]="filtroEspera === 'todos'"
+                    (click)="fijarFiltroEspera('todos')">Todas</button>
+                  <button type="button" class="sol-chips__btn" [class.is-active]="filtroEspera === 'antiguos'"
+                    [attr.aria-pressed]="filtroEspera === 'antiguos'"
+                    (click)="fijarFiltroEspera('antiguos')">Más de 3 días</button>
+                  <button type="button" class="sol-chips__btn" [class.is-active]="filtroEspera === 'recientes'"
+                    [attr.aria-pressed]="filtroEspera === 'recientes'"
+                    (click)="fijarFiltroEspera('recientes')">Últimas 24 h</button>
+                </div>
+              </fieldset>
+              <fieldset class="sol-filters__group">
+                <legend>RENIEC</legend>
+                <div class="sol-chips" role="group" aria-label="Filtrar por RENIEC">
+                  <button type="button" class="sol-chips__btn" [class.is-active]="filtroReniec === 'todos'"
+                    [attr.aria-pressed]="filtroReniec === 'todos'"
+                    (click)="fijarFiltroReniec('todos')">Todas</button>
+                  <button type="button" class="sol-chips__btn" [class.is-active]="filtroReniec === 'coincide'"
+                    [attr.aria-pressed]="filtroReniec === 'coincide'"
+                    (click)="fijarFiltroReniec('coincide')">Coincide</button>
+                  <button type="button" class="sol-chips__btn" [class.is-active]="filtroReniec === 'no-coincide'"
+                    [attr.aria-pressed]="filtroReniec === 'no-coincide'"
+                    (click)="fijarFiltroReniec('no-coincide')">No coincide</button>
+                  <button type="button" class="sol-chips__btn" [class.is-active]="filtroReniec === 'error'"
+                    [attr.aria-pressed]="filtroReniec === 'error'"
+                    (click)="fijarFiltroReniec('error')">Error</button>
+                  <button type="button" class="sol-chips__btn" [class.is-active]="filtroReniec === 'pendiente'"
+                    [attr.aria-pressed]="filtroReniec === 'pendiente'"
+                    (click)="fijarFiltroReniec('pendiente')">Sin consulta</button>
+                </div>
+              </fieldset>
+              <div class="sol-filters__foot">
+                <button type="button" class="sol-link" [disabled]="!hayFiltroCola"
+                  (click)="limpiarFiltrosCola()">Limpiar filtros</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        @if (cargando) {
+          <div class="sol-queue__scroll" id="sol-queue-panel" role="status" aria-live="polite" aria-busy="true">
+            <span class="sol-sr-only">Cargando solicitudes</span>
+            @for (sk of [1, 2, 3, 4, 5, 6]; track sk) {
+              <div class="sol-skel" aria-hidden="true">
+                <span class="sol-skel__avatar"></span>
+                <span class="sol-skel__lines">
+                  <span class="sol-skel__line"></span>
+                  <span class="sol-skel__line sol-skel__line--short"></span>
+                </span>
+              </div>
+            }
+          </div>
+        } @else if (errorCarga) {
+          <div class="sol-empty sol-empty--error" role="alert">
+            <p class="sol-empty__title">No se pudo cargar la cola</p>
+            <p class="sol-empty__text">{{ errorCarga }}</p>
+            <button type="button" class="sol-btn sol-btn--ghost" (click)="cargar()">Reintentar</button>
+          </div>
+        } @else if (solicitudesFiltradas.length === 0) {
+          <div class="sol-empty">
+            <svg class="sol-empty__icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+              @if (hayFiltroCola) {
+                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+              } @else if (filtro === 'PENDIENTE_APROBACION') {
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+              } @else {
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+              }
+            </svg>
+            <p class="sol-empty__title">
+              @if (hayFiltroCola) {
+                Sin coincidencias
+              } @else if (filtro === 'PENDIENTE_APROBACION') {
+                Cola al día
+              } @else {
+                Sin rechazos
+              }
+            </p>
+            <p class="sol-empty__text">
+              @if (busqueda.trim()) {
+                No hay solicitudes que coincidan con «{{ busqueda.trim() }}».
+              } @else if (hayFiltrosExtra) {
+                Ninguna solicitud cumple los filtros elegidos.
+              } @else if (filtro === 'PENDIENTE_APROBACION') {
+                No hay personas esperando aprobación en este momento.
+              } @else {
+                Aún no se ha rechazado ninguna solicitud de registro.
+              }
+            </p>
+            @if (hayFiltroCola) {
+              <button type="button" class="sol-btn sol-btn--ghost" (click)="limpiarFiltrosCola()">Limpiar filtros</button>
+            }
+          </div>
+        } @else {
+          <div class="sol-queue__scroll" id="sol-queue-panel" role="tabpanel" aria-labelledby="sol-tab-pendientes sol-tab-rechazadas">
+            <ul class="sol-queue__list" role="listbox" aria-label="Solicitudes" aria-activedescendant="sol-item-{{ seleccionada?.id }}"
+              (keydown)="navegarCola($event)">
+              @for (grupo of gruposCola; track grupo.clave) {
+                <li class="sol-group">
+                  <p class="sol-group__label">
+                    {{ grupo.titulo }}
+                    <span>{{ grupo.items.length }}</span>
+                  </p>
+                  <ul class="sol-group__items">
+                    @for (s of grupo.items; track s.id) {
+                      <li>
+                        <button type="button" class="sol-item" id="sol-item-{{ s.id }}"
+                          role="option"
+                          [attr.aria-label]="etiquetaOpcion(s)"
+                          [attr.aria-selected]="seleccionada?.id === s.id"
+                          [class.is-active]="seleccionada?.id === s.id"
+                          [class.is-urgent]="esUrgente(s)"
+                          (click)="seleccionar(s)">
+                          <span class="sol-item__avatar" aria-hidden="true">
+                            @if (tieneFoto(s)) {
+                              <img [src]="s.fotoPerfilUrl" [alt]="" (error)="onFotoError(s.id)" />
+                            } @else {
+                              <span>{{ iniciales(s) }}</span>
+                            }
+                          </span>
+                          <span class="sol-item__body">
+                            <span class="sol-item__name">{{ nombre(s) }}</span>
+                            <span class="sol-item__meta">
+                              <span>{{ esperaRelativa(s) }}</span>
+                              <span class="sol-item__dot" aria-hidden="true"></span>
+                              <span class="sol-mono">{{ s.dni }}</span>
+                            </span>
+                            <span class="sol-item__status">
+                              @if (esUrgente(s)) {
+                                <span class="sol-status sol-status--warn">Urgente</span>
+                              }
+                              <span class="sol-status sol-status--{{ semaforoReniec(s.verificacionReniecEstado) }}"
+                                [title]="etiquetaReniec(s.verificacionReniecEstado)">
+                                {{ etiquetaReniecCorta(s.verificacionReniecEstado) }}
+                              </span>
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                </li>
+              }
+            </ul>
+          </div>
+          <footer class="sol-queue__foot" aria-live="polite">
+            <span>{{ solicitudesFiltradas.length }} en esta vista</span>
+            @if (hayFiltroCola) {
+              <button type="button" class="sol-link" (click)="limpiarFiltrosCola()">Quitar filtros</button>
+            }
+          </footer>
+        }
+      </aside>
+
+      <article class="sol-dossier" id="sol-dossier" tabindex="-1" [attr.aria-busy]="cargando">
+        @if (cargando && !seleccionada) {
+          <div class="civic-loading" role="status" aria-live="polite">
+            <div class="civic-loading__spinner" aria-hidden="true"></div>
+            <p class="sol-empty__text">Cargando solicitudes…</p>
+          </div>
+        } @else if (!seleccionada) {
+          <div class="sol-empty sol-empty--panel">
+            <svg class="sol-empty__icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
+            </svg>
+            <p class="sol-empty__title">Elija una solicitud</p>
+            <p class="sol-empty__text">Abra un expediente de la cola para ver la selfie y decidir.</p>
+          </div>
+        } @else {
+          <div class="sol-dossier__scroll">
+            <header class="sol-dossier__head">
+              <button type="button" class="sol-back" (click)="volverACola()">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
+                </svg>
+                Volver a la cola
+              </button>
+            </header>
+
+            <div class="sol-split">
+              <section class="sol-photo-card" aria-label="Foto de verificación">
+                @if (tieneFoto(seleccionada)) {
+                  <button type="button" class="sol-photo" (click)="abrirFoto()" [attr.aria-label]="'Ampliar selfie de ' + nombre(seleccionada)">
+                    <img [src]="seleccionada.fotoPerfilUrl" [alt]="'Selfie de ' + nombre(seleccionada)"
+                      (error)="onFotoError(seleccionada.id)" />
+                    <span class="sol-photo__hint">
+                      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"/>
+                      </svg>
+                      Ampliar
+                    </span>
+                  </button>
+                } @else {
+                  <div class="sol-photo sol-photo--empty" role="img" aria-label="Sin foto de verificación">
+                    <span class="sol-photo__fallback">{{ iniciales(seleccionada) }}</span>
+                    <p>Sin foto de verificación</p>
+                  </div>
+                }
+              </section>
+
+              <div class="sol-dossier__main">
+                <div class="sol-dossier__identity">
+                  <h2 class="sol-dossier__title">{{ nombre(seleccionada) }}</h2>
+                  <p class="sol-dossier__meta">
+                    <span>{{ esperaRelativa(seleccionada) }}</span>
+                    <span class="sol-item__dot" aria-hidden="true"></span>
+                    <span class="sol-dni"><span class="sol-dni__label">DNI</span> {{ seleccionada.dni }}</span>
+                    @if (esUrgente(seleccionada)) {
+                      <span class="sol-status sol-status--warn">Urgente</span>
+                    }
+                  </p>
+                </div>
+
+                <section aria-labelledby="sol-facts-title">
+                  <h3 id="sol-facts-title" class="sol-section-title">Datos del solicitante</h3>
+                  <dl class="sol-facts">
+                    <div class="sol-facts__row sol-facts__row--wide">
+                      <dt>Correo</dt>
+                      <dd [class.is-muted]="!seleccionada.email">{{ seleccionada.email || 'No informado' }}</dd>
+                    </div>
+                    <div class="sol-facts__row">
+                      <dt>Teléfono</dt>
+                      <dd [class.is-muted]="!seleccionada.telefono">{{ seleccionada.telefono || 'No informado' }}</dd>
+                    </div>
+                    <div class="sol-facts__row">
+                      <dt>RENIEC</dt>
+                      <dd>
+                        <span class="sol-status sol-status--{{ semaforoReniec(seleccionada.verificacionReniecEstado) }}"
+                          [title]="etiquetaReniec(seleccionada.verificacionReniecEstado)">
+                          {{ etiquetaReniecCorta(seleccionada.verificacionReniecEstado) }}
+                        </span>
+                      </dd>
+                    </div>
+                    <div class="sol-facts__row">
+                      <dt>Solicitado</dt>
+                      <dd>{{ fechaCompleta(seleccionada.registroSolicitadoEn || seleccionada.creadoEn || null) }}</dd>
+                    </div>
+                    @if (filtro === 'RECHAZADO') {
+                      <div class="sol-facts__row">
+                        <dt>Revisado</dt>
+                        <dd>{{ fechaCompleta(seleccionada.registroRevisadoEn) }}</dd>
+                      </div>
+                    }
+                  </dl>
+                </section>
+
+                <section class="sol-check" aria-labelledby="sol-check-title">
+                  <h3 id="sol-check-title" class="sol-section-title">Lista de verificación</h3>
+                  <ul class="sol-check__list">
+                    @for (item of checklist; track item.clave) {
+                      <li class="sol-check__item sol-check__item--{{ item.estado }}">
+                        <span class="sol-check__status">{{ etiquetaCheck(item.estado) }}</span>
+                        <span>
+                          <strong>{{ item.titulo }}</strong>
+                          <span>{{ item.detalle }}</span>
+                        </span>
+                      </li>
+                    }
+                  </ul>
+                </section>
+
+                @if (filtro === 'RECHAZADO' && seleccionada.registroRechazoMotivo) {
+                  <aside class="sol-motivo" aria-label="Motivo de rechazo">
+                    <p class="sol-motivo__label">Motivo comunicado</p>
+                    <p class="sol-motivo__text">{{ seleccionada.registroRechazoMotivo }}</p>
+                  </aside>
+                }
+              </div>
+            </div>
+          </div>
+
+          @if (filtro === 'PENDIENTE_APROBACION') {
+            <footer class="sol-actions">
+              @let pendientesCheck = checksPorRevisar;
+              <p class="sol-verdict" [class.is-ok]="pendientesCheck === 0" aria-live="polite">
+                <span class="sol-verdict__mark" aria-hidden="true">{{ pendientesCheck === 0 ? '✓' : '!' }}</span>
+                <span class="sol-verdict__copy">
+                  <strong>{{ pendientesCheck === 0 ? 'Todo en orden' : pendientesCheck === 1 ? '1 criterio por revisar' : pendientesCheck + ' criterios por revisar' }}</strong>
+                  <span>{{ checklist.length - pendientesCheck }} de {{ checklist.length }} criterios cumplen</span>
+                </span>
+              </p>
+              <div class="sol-cmdbar" role="group" aria-label="Decisión de la solicitud">
+                <button type="button" class="sol-btn sol-btn--danger-outline" [disabled]="accionando"
+                  [attr.aria-busy]="accionando"
+                  (click)="abrirRechazo()">
+                  <svg class="sol-icon" fill="none" stroke="currentColor" stroke-width="1.85" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+                  </svg>
+                  Rechazar solicitud
+                </button>
+                <button type="button" class="sol-btn sol-btn--solid" [disabled]="accionando"
+                  [class.is-caution]="pendientesCheck > 0"
+                  [attr.aria-busy]="accionando"
+                  (click)="confirmarAprobar(seleccionada)">
+                  <svg class="sol-icon" fill="none" stroke="currentColor" stroke-width="1.85" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                  </svg>
+                  Aprobar y habilitar
+                </button>
+              </div>
+            </footer>
+          }
+        }
+      </article>
+    </section>
+  </section>
+</div>
+
+@if (fotoAmpliada && seleccionada && tieneFoto(seleccionada)) {
+  <div class="sol-lightbox" role="dialog" aria-modal="true" aria-labelledby="sol-lightbox-title"
+    (click)="cerrarFoto()">
+    <p id="sol-lightbox-title" class="sol-sr-only">Selfie ampliada. Pulse Escape o Cerrar para volver.</p>
+    <img [src]="seleccionada.fotoPerfilUrl" [alt]="'Selfie de ' + nombre(seleccionada)"
+      (click)="$event.stopPropagation()" />
+    <button type="button" class="sol-lightbox__close" (click)="cerrarFoto()" aria-label="Cerrar foto">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+}
+
+@if (mostrarRechazo && seleccionada) {
+  <div class="civic-modal-backdrop" role="dialog" aria-modal="true"
+    aria-labelledby="sol-reject-title" aria-describedby="sol-reject-desc"
+    (click)="cerrarRechazo()">
+    <div class="civic-modal civic-modal--md sol-modal" (click)="$event.stopPropagation()">
+      <header class="sol-modal__header">
+        <div class="sol-modal__copy">
+          <p class="sol-kicker">Acción irreversible</p>
+          <h2 id="sol-reject-title" class="sol-modal__title">Rechazar solicitud</h2>
+          <p id="sol-reject-desc" class="sol-modal__text">
+            {{ nombre(seleccionada) }} (DNI {{ seleccionada.dni }}) no podrá entrar a la app hasta una nueva solicitud. El motivo se le comunicará.
+          </p>
+        </div>
+        <button type="button" class="sol-icon-btn" (click)="cerrarRechazo()" aria-label="Cerrar">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </header>
+      <div class="sol-modal__body" [class.is-invalid]="rechazoTocado && motivoInvalido">
+        <label class="sol-reject__label" for="motivo-rechazo">Motivo del rechazo</label>
+        <textarea id="motivo-rechazo" class="civic-input sol-reject__area" rows="5"
+          [(ngModel)]="motivoRechazo"
+          required
+          [attr.maxlength]="motivoMax"
+          [attr.aria-invalid]="rechazoTocado && motivoInvalido"
+          [attr.aria-describedby]="rechazoTocado && motivoInvalido ? 'sol-reject-error' : 'sol-reject-count'"
+          (blur)="rechazoTocado = true"
+          placeholder="Ej. la selfie no muestra el rostro con claridad"></textarea>
+        <div class="sol-reject__meta">
+          @if (rechazoTocado && motivoInvalido) {
+            <p class="sol-reject__error" id="sol-reject-error" role="alert">Escriba al menos {{ motivoMin }} caracteres.</p>
+          } @else {
+            <p class="sol-reject__count" id="sol-reject-count">{{ motivoRestante }} caracteres restantes</p>
+          }
+        </div>
+      </div>
+      <footer class="sol-modal__footer">
+        <button type="button" class="sol-btn sol-btn--ghost" [disabled]="accionando"
+          (click)="cerrarRechazo()">Cancelar</button>
+        <button type="button" class="sol-btn sol-btn--danger" [disabled]="accionando"
+          [attr.aria-busy]="accionando"
+          (click)="confirmarRechazo(seleccionada)">Confirmar rechazo</button>
+      </footer>
+    </div>
+  </div>
+}
+
+@if (modalConfirmacion) {
+  <div class="civic-modal-backdrop" role="alertdialog" aria-modal="true"
+    aria-labelledby="sol-confirm-title" aria-describedby="sol-confirm-desc"
+    (click)="cerrarConfirmacion()">
+    <div class="civic-modal civic-modal--sm sol-modal" id="sol-confirm-modal" tabindex="-1"
+      (click)="$event.stopPropagation()">
+      <header class="sol-modal__header">
+        <div class="sol-modal__copy">
+          <p class="sol-kicker">{{ modalConfirmacion.peligro ? 'Acción irreversible' : 'Confirmar decisión' }}</p>
+          <h2 id="sol-confirm-title" class="sol-modal__title">{{ modalConfirmacion.titulo }}</h2>
+          <p id="sol-confirm-desc" class="sol-modal__text">{{ modalConfirmacion.mensaje }}</p>
+        </div>
+        <button type="button" class="sol-icon-btn" (click)="cerrarConfirmacion()" aria-label="Cerrar">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </header>
+      <footer class="sol-modal__footer">
+        <button type="button" class="sol-btn sol-btn--ghost" (click)="cerrarConfirmacion()">Cancelar</button>
+        <button type="button" class="sol-btn"
+          [class.sol-btn--solid]="!modalConfirmacion.peligro"
+          [class.sol-btn--danger]="modalConfirmacion.peligro"
+          [disabled]="accionando"
+          [attr.aria-busy]="accionando"
+          (click)="confirmarAccion()">{{ modalConfirmacion.confirmarLabel }}</button>
+      </footer>
+    </div>
+  </div>
+}

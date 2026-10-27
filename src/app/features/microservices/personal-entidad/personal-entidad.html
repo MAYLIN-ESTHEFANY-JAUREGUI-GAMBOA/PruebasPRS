@@ -1,0 +1,277 @@
+<div class="civic-page castigo-page mod-admin-layout">
+
+  <header class="castigo-page-head">
+    <div class="castigo-page-head__top">
+      <div class="castigo-page-head__copy">
+        <p class="castigo-page-head__eyebrow">{{ esMunicipal ? 'Gestión municipal' : 'Gestión de entidad' }}</p>
+        <h1 class="castigo-page-head__title">Personal</h1>
+        <p class="castigo-page-head__lead" *ngIf="!esMunicipal">
+          Crea operadores y analistas de <strong>{{ nombreEntidad }}</strong>. Solo podrán ingresar al panel de esta entidad.
+        </p>
+        <p class="castigo-page-head__lead" *ngIf="esMunicipal">
+          Crea analistas{{ rolesDisponibles.length > 1 ? ' y administradores' : '' }} de <strong>{{ nombreEntidad }}</strong>.
+          Ven los datos de todas sus entidades, sin atender emergencias.
+        </p>
+      </div>
+      <div class="castigo-page-head__actions">
+        <ng-container *ngIf="puedeExportar">
+          <button type="button" class="civic-btn civic-btn--secondary" (click)="exportar('pdf')"
+            [disabled]="generandoReporte || !filtrados.length" title="Exportar la tabla filtrada a PDF">
+            <svg class="castigo-btn-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+            {{ generandoReporte ? 'Generando…' : 'PDF' }}
+          </button>
+          <button type="button" class="civic-btn civic-btn--secondary" (click)="exportar('xlsx')"
+            [disabled]="generandoReporte || !filtrados.length" title="Exportar la tabla filtrada a Excel">
+            <svg class="castigo-btn-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Excel
+          </button>
+        </ng-container>
+        <button type="button" class="civic-btn civic-btn--primary" (click)="abrirModal()">
+          <svg class="castigo-btn-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+          </svg>
+          Nuevo usuario
+        </button>
+        <button type="button" class="castigo-page-head__refresh" (click)="cargar()" [disabled]="cargando"
+          [attr.aria-label]="cargando ? 'Actualizando' : 'Refrescar'">
+          <svg class="castigo-btn-icon" [class.is-spinning]="cargando" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="mod-stat-grid" role="group" aria-label="Resumen de personal">
+      <article class="mod-stat-card">
+        <span class="mod-stat-card__icon mod-stat-card__icon--primary" aria-hidden="true">
+          <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+        </span>
+        <div class="mod-stat-card__body">
+          <p class="mod-stat-card__value">{{ personal.length }}</p>
+          <p class="mod-stat-card__label">Personal</p>
+          <p class="mod-stat-card__hint">Usuarios vinculados a la entidad</p>
+        </div>
+      </article>
+      <article class="mod-stat-card">
+        <span class="mod-stat-card__icon mod-stat-card__icon--success" aria-hidden="true">
+          <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        </span>
+        <div class="mod-stat-card__body">
+          <p class="mod-stat-card__value">{{ conteoActivos() }}</p>
+          <p class="mod-stat-card__label">Activos</p>
+          <p class="mod-stat-card__hint">Pueden ingresar al panel</p>
+        </div>
+      </article>
+      <article class="mod-stat-card">
+        <span class="mod-stat-card__icon mod-stat-card__icon--muted" aria-hidden="true">
+          <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+        </span>
+        <div class="mod-stat-card__body">
+          <p class="mod-stat-card__value">{{ conteoInactivos() }}</p>
+          <p class="mod-stat-card__label">Inactivos</p>
+          <p class="mod-stat-card__hint">Acceso deshabilitado</p>
+        </div>
+      </article>
+    </div>
+  </header>
+
+  <section class="mod-workspace" aria-labelledby="sec-personal">
+    <header class="mod-workspace__head">
+      <div>
+        <h2 id="sec-personal" class="mod-workspace__title">Directorio de personal</h2>
+        <p class="mod-workspace__caption">{{ esMunicipal ? 'Personal que trabaja con el panel de tu municipalidad' : 'Operadores que trabajan con el panel de tu entidad' }}</p>
+      </div>
+      <span class="castigo-result-badge">{{ filtrados.length }} de {{ personal.length }}</span>
+    </header>
+
+    <div class="mod-command-strip" role="search">
+      <div class="mod-command-strip__search civic-search">
+        <svg class="civic-search__icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"/>
+        </svg>
+        <input id="per-buscar" type="search" class="civic-input" [(ngModel)]="busqueda" (ngModelChange)="aplicarFiltros()"
+          placeholder="DNI, nombre, teléfono o email…" aria-label="Buscar personal" />
+      </div>
+      <div class="mod-command-strip__filters">
+        <span class="mod-command-strip__filter-label">Estado</span>
+        <div class="civic-pills civic-pills--wrap">
+          <button *ngFor="let f of filtrosEstado" type="button" class="civic-pill civic-pill--sm"
+            [class.is-active]="filtroEstado === f.value"
+            (click)="filtroEstado = f.value; aplicarFiltros()">{{ f.label }}</button>
+        </div>
+      </div>
+      <div class="mod-command-strip__end">
+        <button *ngIf="hayFiltrosActivos()" type="button" class="civic-btn civic-btn--secondary civic-btn--sm"
+          (click)="limpiarFiltros()">Limpiar filtros</button>
+        <p class="mod-command-strip__count">{{ filtrados.length }} resultados</p>
+      </div>
+    </div>
+
+    <div class="mod-viewport">
+      <div *ngIf="cargando" class="civic-loading" style="padding: 2.5rem 1.5rem;">
+        <div class="civic-loading__spinner" aria-hidden="true"></div>
+        <p class="text-sm text-civic-text-muted">Cargando personal…</p>
+      </div>
+
+      <div *ngIf="!cargando && errorCarga" class="castigo-empty castigo-empty--error">
+        <p class="castigo-empty__title">No se pudieron cargar los datos</p>
+        <p class="castigo-empty__text">{{ errorCarga }}</p>
+        <button type="button" class="civic-btn civic-btn--secondary civic-btn--sm" (click)="cargar()">Reintentar</button>
+      </div>
+
+      <ng-container *ngIf="!cargando && !errorCarga">
+        <div *ngIf="filtrados.length > 0" class="mod-responsive-table">
+          <div class="mod-dir-table-wrap">
+            <table class="mod-dir-table" aria-label="Personal de la entidad">
+              <thead>
+                <tr>
+                  <th scope="col">Persona</th>
+                  <th scope="col">DNI</th>
+                  <th scope="col">Rol</th>
+                  <th scope="col">Contacto</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col" class="sr-only">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let u of filtrados">
+                  <td>
+                    <div class="font-medium">{{ nombreCompleto(u) }}</div>
+                  </td>
+                  <td><span class="castigo-mono">{{ u.dni }}</span></td>
+                  <td>{{ etiquetaRol(u) }}</td>
+                  <td>
+                    <div class="text-sm">{{ u.telefono || '—' }}</div>
+                    <div class="text-xs text-civic-text-muted">{{ u.email || '' }}</div>
+                  </td>
+                  <td>
+                    <span class="civic-pill civic-pill--sm"
+                      [class.is-active]="u.estado === 'ACTIVO'">{{ u.estado || '—' }}</span>
+                  </td>
+                  <td>
+                    <button type="button" class="civic-btn civic-btn--secondary civic-btn--sm"
+                      (click)="toggleEstado(u)"
+                      [disabled]="guardando || u.estado === 'SUSPENDIDO'">
+                      {{ u.estado === 'ACTIVO' ? 'Desactivar' : 'Activar' }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div *ngIf="filtrados.length === 0" class="castigo-empty">
+          <p class="castigo-empty__title">Aún no hay personal</p>
+          <p class="castigo-empty__text">Crea el primer usuario para que pueda operar en el panel de tu entidad.</p>
+          <button type="button" class="civic-btn civic-btn--primary civic-btn--sm" (click)="abrirModal()">Nuevo usuario</button>
+        </div>
+      </ng-container>
+    </div>
+  </section>
+</div>
+
+<div *ngIf="modalAbierto" ngSkipHydration
+     class="civic-modal-backdrop castigo-modal-backdrop"
+     role="dialog" aria-modal="true" aria-labelledby="modal-personal-title"
+     (click)="cerrarModal()">
+  <div class="civic-modal civic-modal--md castigo-modal" (click)="$event.stopPropagation()">
+    <header class="castigo-modal__header castigo-modal__header--form">
+      <div>
+        <p class="castigo-modal__eyebrow">Alta de personal</p>
+        <h2 id="modal-personal-title" class="castigo-modal__title">Nuevo usuario</h2>
+        <p class="castigo-modal__subtitle">Quedará asociado a {{ nombreEntidad }}</p>
+      </div>
+      <button type="button" class="civic-modal__close" (click)="$event.stopPropagation(); cerrarModal()" aria-label="Cerrar">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="castigo-modal__body">
+      <fieldset class="castigo-form-section">
+        <legend class="castigo-form-section__legend">Identidad</legend>
+        <div class="castigo-form-grid">
+          <div class="castigo-field" [class.castigo-field--invalid]="tieneError('dni')">
+            <label class="civic-field-label" for="per-dni">DNI <span class="castigo-field__required" aria-hidden="true">*</span></label>
+            <input id="per-dni" class="civic-input" maxlength="8"
+              [ngModel]="form.dni" (ngModelChange)="onDniInput($event)" (blur)="validarCampo('dni')"
+              placeholder="8 dígitos" inputmode="numeric" autocomplete="off" />
+            <p *ngIf="tieneError('dni')" class="castigo-field__error" role="alert">{{ errores['dni'] }}</p>
+            <p *ngIf="buscandoDni" class="castigo-field__hint">Verificando DNI…</p>
+            <p *ngIf="existente" class="castigo-field__hint" role="status">
+              {{ existente.alreadyStaff ? 'Este usuario ya es parte de su personal.' : 'Este DNI ya está registrado.' }}
+              Sus datos se rellenaron y no se modificarán: solo se le agregará el rol seleccionado.
+            </p>
+          </div>
+          <div class="castigo-field" [class.castigo-field--invalid]="tieneError('nombres')">
+            <label class="civic-field-label" for="per-nombres">Nombres <span class="castigo-field__required" aria-hidden="true">*</span></label>
+            <input id="per-nombres" class="civic-input" maxlength="80"
+              [(ngModel)]="form.nombres" (blur)="validarCampo('nombres')" autocomplete="given-name" [disabled]="!!existente" />
+            <p *ngIf="tieneError('nombres')" class="castigo-field__error" role="alert">{{ errores['nombres'] }}</p>
+          </div>
+          <div class="castigo-field" [class.castigo-field--invalid]="tieneError('apellidos')">
+            <label class="civic-field-label" for="per-apellidos">Apellidos <span class="castigo-field__required" aria-hidden="true">*</span></label>
+            <input id="per-apellidos" class="civic-input" maxlength="80"
+              [(ngModel)]="form.apellidos" (blur)="validarCampo('apellidos')" autocomplete="family-name" [disabled]="!!existente" />
+            <p *ngIf="tieneError('apellidos')" class="castigo-field__error" role="alert">{{ errores['apellidos'] }}</p>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="castigo-form-section">
+        <legend class="castigo-form-section__legend">Acceso al panel</legend>
+        <div class="castigo-form-grid">
+          <div *ngIf="!existente" class="castigo-field" [class.castigo-field--invalid]="tieneError('password')">
+            <label class="civic-field-label" for="per-pass">Contraseña <span class="castigo-field__required" aria-hidden="true">*</span></label>
+            <input id="per-pass" type="password" class="civic-input" maxlength="128"
+              [(ngModel)]="form.password" (blur)="validarCampo('password')"
+              placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+            <p class="castigo-field__hint">La usará con su DNI para entrar al panel.</p>
+            <p *ngIf="tieneError('password')" class="castigo-field__error" role="alert">{{ errores['password'] }}</p>
+          </div>
+          <div class="castigo-field" [class.castigo-field--invalid]="tieneError('rolId')">
+            <label class="civic-field-label" for="per-rol">Rol <span class="castigo-field__required" aria-hidden="true">*</span></label>
+            <select id="per-rol" class="civic-input" [(ngModel)]="form.rolId" (ngModelChange)="validarCampo('rolId')">
+              <option *ngFor="let r of rolesDisponibles" [value]="r.id">{{ r.label }}</option>
+            </select>
+            <p *ngIf="tieneError('rolId')" class="castigo-field__error" role="alert">{{ errores['rolId'] }}</p>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="castigo-form-section">
+        <legend class="castigo-form-section__legend">Contacto</legend>
+        <div class="castigo-form-grid">
+          <div class="castigo-field" [class.castigo-field--invalid]="tieneError('telefono')">
+            <label class="civic-field-label" for="per-tel">Teléfono</label>
+            <input id="per-tel" class="civic-input"
+              [ngModel]="form.telefono" (ngModelChange)="onTelefonoInput($event)" (blur)="validarCampo('telefono')" [disabled]="!!existente"
+              inputmode="tel" autocomplete="tel" />
+            <p *ngIf="tieneError('telefono')" class="castigo-field__error" role="alert">{{ errores['telefono'] }}</p>
+          </div>
+          <div class="castigo-field" [class.castigo-field--invalid]="tieneError('email')">
+            <label class="civic-field-label" for="per-email">Email</label>
+            <input id="per-email" type="email" class="civic-input"
+              [(ngModel)]="form.email" (blur)="validarCampo('email')" autocomplete="email" [disabled]="!!existente" />
+            <p *ngIf="tieneError('email')" class="castigo-field__error" role="alert">{{ errores['email'] }}</p>
+          </div>
+        </div>
+      </fieldset>
+
+      <p *ngIf="errorModal" class="castigo-field__error" role="alert">{{ errorModal }}</p>
+    </div>
+
+    <footer class="castigo-modal__footer">
+      <button type="button" class="civic-btn civic-btn--secondary" (click)="cerrarModal()" [disabled]="guardando">Cancelar</button>
+      <button type="button" class="civic-btn civic-btn--primary" (click)="guardar()" [disabled]="guardando">
+        {{ guardando ? 'Guardando…' : 'Crear usuario' }}
+      </button>
+    </footer>
+  </div>
+</div>

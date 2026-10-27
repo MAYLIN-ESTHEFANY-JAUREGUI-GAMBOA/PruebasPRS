@@ -1,0 +1,3779 @@
+<!-- ========================================== -->
+
+
+
+<!-- COMPONENTES DE SUPERPOSICIÓN (Modales, Loading) -->
+
+
+
+<!-- ========================================== -->
+
+
+
+<div *ngIf="abriendoDetalle" class="fixed inset-0 z-[9999] bg-black/70 flex flex-col items-center justify-center">
+
+
+
+    <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-500 mb-4"></div>
+
+
+
+    <h2 class="text-white text-xl font-semibold tracking-wide shadow-black drop-shadow-md">Abriendo detalle...</h2>
+
+
+
+</div>
+
+
+
+
+
+
+
+<app-incident-history
+
+
+
+  [abierto]="historialAbierto"
+
+
+
+  [notificaciones]="notificaciones"
+
+
+
+  (cerrar)="toggleHistorial()">
+
+
+
+</app-incident-history>
+
+
+
+
+
+
+
+<app-incident-create
+
+
+
+  [abierto]="modalCrearAbierto"
+
+
+
+  [guardando]="guardandoIncidente"
+
+
+
+  (cerrar)="cerrarModalCrear()"
+
+
+
+  (incidenteCreado)="onIncidenteCreado($event)">
+
+
+
+</app-incident-create>
+
+
+
+
+
+
+
+<!-- ========================================== -->
+
+
+
+<!-- CONTENEDOR PRINCIPAL -->
+
+
+
+<!-- Maneja la estructura general de la pantalla dividida -->
+
+
+
+<!-- ========================================== -->
+
+
+
+<div class="flex-1 flex min-w-0 relative h-full">
+
+
+
+
+
+
+
+  <!-- ========================================== -->
+
+
+
+  <!-- COLUMNA LISTA -->
+
+
+
+  <!-- Cambia de tamaño: Ocupa toda la pantalla en Pre-sala o se vuelve barra lateral en Master-Detail -->
+
+
+
+  <!-- ========================================== -->
+
+
+
+  <section id="listCol" 
+
+
+
+           class="flex flex-col min-w-0 transition-all duration-500 ease-in-out"
+
+
+
+           [ngClass]="!incidenteSeleccionado ? 'w-full bg-gray-50 h-full' : 'w-full md:w-[380px] shrink-0 bg-white border-r border-gray-200 hidden md:flex h-full'">
+
+
+
+
+
+
+
+    <!-- ========================================== -->
+
+
+
+    <!-- VISTA LOBBY / PRE-SALA -->
+
+
+
+    <!-- Se muestra a pantalla completa cuando no hay un incidente seleccionado -->
+
+
+
+    <!-- ========================================== -->
+
+
+
+    <div *ngIf="!incidenteSeleccionado" id="lobbyContent" class="flex-1 min-h-0 flex flex-col overflow-y-auto animate-fade-in">
+
+
+
+      <div class="px-6 md:px-10 pt-8 pb-5 shrink-0">
+
+
+
+        <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+
+
+
+          <div>
+
+
+
+            <h1 class="text-2xl font-black text-gray-900 flex items-center gap-2">
+
+
+
+              <span class="material-symbols-outlined !text-3xl text-red-500">emergency</span>
+
+
+
+              Centro de Gestión de Emergencias
+
+
+
+            </h1>
+
+
+
+            <p class="text-sm text-gray-400 font-medium mt-0.5">Vista de entidad · Emergencias asignadas a tu entidad</p>
+
+
+
+          </div>
+
+
+
+          <div class="flex items-center gap-2">
+
+
+
+            <button (click)="cargar()" title="Refrescar" class="h-10 w-10 rounded-full hover:bg-gray-200/70 flex items-center justify-center text-gray-500"><span class="material-symbols-outlined !text-xl">refresh</span></button>
+
+
+
+
+
+
+
+            <!-- Dropdown Exportar Reporte de Listado de Incidentes -->
+
+
+
+            <div *ngIf="puedeExportar" class="relative">
+
+
+
+              <button (click)="$event.stopPropagation(); toggleExportarListadoMenu()"
+
+
+
+                      [disabled]="exportandoReporte || !incidentesFiltrados.length"
+
+
+
+                      title="Exportar reporte de incidencias (PDF / Excel)"
+
+
+
+                      class="h-10 flex items-center gap-1.5 px-3.5 rounded-lg bg-white hover:bg-gray-50 text-gray-700 font-bold text-sm border border-gray-200 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+
+
+
+                <span class="material-symbols-outlined !text-lg text-gray-600" [class.animate-spin]="exportandoReporte">{{ exportandoReporte ? 'progress_activity' : 'download' }}</span>
+
+
+
+                <span>{{ exportandoReporte ? 'Generando…' : 'Reportes' }}</span>
+
+
+
+                <span class="material-symbols-outlined !text-sm text-gray-400 transition-transform" [class.rotate-180]="exportarListadoMenuAbierto">expand_more</span>
+
+
+
+              </button>
+
+
+
+              <div *ngIf="exportarListadoMenuAbierto" (click)="$event.stopPropagation()"
+
+
+
+                   class="absolute right-0 mt-1.5 w-52 bg-white border border-gray-200 rounded-xl shadow-xl py-1.5 z-50 animate-fade-in text-xs divide-y divide-gray-100">
+
+
+
+                <button (click)="ejecutarExportarListado('pdf')" class="w-full text-left px-3.5 py-2.5 flex items-center gap-2.5 hover:bg-red-50 text-gray-700 hover:text-red-700 transition-colors font-medium cursor-pointer">
+
+
+
+                  <span class="material-symbols-outlined !text-lg text-red-500">picture_as_pdf</span>
+
+
+
+                  <div>
+
+
+
+                    <p class="font-bold text-gray-800">Reporte PDF</p>
+
+
+
+                    <p class="text-[11px] text-gray-400">Listado actual filtrado</p>
+
+
+
+                  </div>
+
+
+
+                </button>
+
+
+
+                <button (click)="ejecutarExportarListado('excel')" class="w-full text-left px-3.5 py-2.5 flex items-center gap-2.5 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 transition-colors font-medium cursor-pointer">
+
+
+
+                  <span class="material-symbols-outlined !text-lg text-emerald-500">table_view</span>
+
+
+
+                  <div>
+
+
+
+                    <p class="font-bold text-gray-800">Reporte Excel</p>
+
+
+
+                    <p class="text-[11px] text-gray-400">Datos tabulares en XLSX</p>
+
+
+
+                  </div>
+
+
+
+                </button>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+            <button (click)="toggleHistorial()" title="Historial" class="relative h-10 w-10 rounded-full hover:bg-gray-200/70 flex items-center justify-center text-gray-500">
+
+
+
+              <span class="material-symbols-outlined !text-xl">notifications</span>
+
+
+
+              <span *ngIf="notificaciones.length > 0" class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500"></span>
+
+
+
+            </button>
+
+
+
+            <button (click)="pestanaActiva = 'LOBBY'; toggleTutorial()" title="Guía" class="relative h-10 w-10 rounded-full hover:bg-gray-200/70 flex items-center justify-center text-indigo-500">
+
+
+
+              <span class="material-symbols-outlined !text-xl">help</span>
+
+
+
+            </button>
+
+
+
+            <button *ngIf="puedeAtender()" (click)="abrirModalCrear()" class="h-10 flex items-center gap-1.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm">
+
+
+
+              <span class="material-symbols-outlined !text-lg">add</span>Nueva incidencia
+
+
+
+            </button>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+
+
+
+
+        <div class="relative mb-6 max-w-2xl">
+
+
+
+          <span class="material-symbols-outlined !text-lg text-gray-400 absolute left-4 top-1/2 -translate-y-1/2">search</span>
+
+
+
+          <input type="text" [(ngModel)]="busquedaLobby" (ngModelChange)="aplicarFiltrosLobby()" placeholder="Buscar por código, dirección u operador..."
+
+
+
+                 class="w-full pl-11 pr-4 py-3 text-sm rounded-xl border border-gray-200 bg-white shadow-sm focus:border-blue-400 outline-none">
+
+
+
+        </div>
+
+
+
+
+
+
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+
+
+          <button (click)="setFiltro('verificar')" [attr.data-active]="filtroActual === 'verificar'" class="stat-card text-left bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 text-amber-600 hover:border-amber-300">
+
+
+
+            <div class="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center shrink-0"><span class="material-symbols-outlined !text-2xl">pending_actions</span></div>
+
+
+
+            <div><p class="text-2xl font-black text-gray-900 leading-none">{{ conteoVerificar }}</p><p class="text-xs font-bold text-gray-500 mt-1">Por verificar</p></div>
+
+
+
+          </button>
+
+
+
+          <button (click)="setFiltro('atencion')" [attr.data-active]="filtroActual === 'atencion'" class="stat-card text-left bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 text-emerald-600 hover:border-emerald-300">
+
+
+
+            <div class="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0"><span class="material-symbols-outlined !text-2xl">local_shipping</span></div>
+
+
+
+            <div><p class="text-2xl font-black text-gray-900 leading-none">{{ conteoAtencion }}</p><p class="text-xs font-bold text-gray-500 mt-1">En atención</p></div>
+
+
+
+          </button>
+
+
+
+          <button (click)="setFiltro('cerrado')" [attr.data-active]="filtroActual === 'cerrado'" class="stat-card text-left bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 text-gray-500 hover:border-gray-300">
+
+
+
+            <div class="w-11 h-11 rounded-xl bg-gray-100 flex items-center justify-center shrink-0"><span class="material-symbols-outlined !text-2xl">task_alt</span></div>
+
+
+
+            <div><p class="text-2xl font-black text-gray-900 leading-none">{{ conteoCerrado }}</p><p class="text-xs font-bold text-gray-500 mt-1">Cerrados</p></div>
+
+
+
+          </button>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+
+
+
+
+      <div class="px-6 md:px-10 pb-10 flex-1">
+
+
+
+        <div *ngIf="incidentesFiltrados.length > 0" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+
+
+
+          <button *ngFor="let inc of incidentesFiltrados" (click)="abrirDetalle(inc)" class="lobby-card text-left bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden group">
+
+
+
+            <div *ngIf="inc.currentStatus === 'VERIFICACION_PENDIENTE' || inc.currentStatus === 'NUEVO'" class="absolute -top-1 -right-1 w-3 h-3">
+
+
+
+              <span class="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+
+
+
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500 m-0.5"></span>
+
+
+
+            </div>
+
+
+
+            <div class="flex items-start justify-between gap-2">
+
+
+
+              <div class="flex items-center gap-2.5">
+
+
+
+                <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg shrink-0">{{ inc._iconoTipo || '🚨' }}</div>
+
+
+
+                <div class="min-w-0">
+
+
+
+                  <p class="text-sm font-bold text-gray-800 truncate">{{ inc._etiquetaTipo || inc.emergencyType }}</p>
+
+
+
+                  <p class="text-[11px] text-gray-400 font-mono truncate">{{ inc.trackingCode }}</p>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+              <span class="text-[10px] text-gray-400 shrink-0 mt-1">{{ inc._fechaFormateada }}</span>
+
+
+
+            </div>
+
+
+
+            <p class="text-xs text-gray-500 flex items-center gap-1"><span class="material-symbols-outlined !text-sm text-gray-400">location_on</span><span class="truncate">{{ inc.ubicacion?.direccion || 'Sin dirección registrada' }}</span></p>
+
+
+
+            <div class="flex items-center gap-1.5 flex-wrap pt-1 border-t border-gray-50">
+
+
+
+               <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border" [ngClass]="inc._claseEstado">{{ inc._etiquetaEstado }}</span>
+
+
+
+               <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border" [ngClass]="inc._claseGravedadVisual">{{ inc._etiquetaGravedadVisual }}</span>
+
+
+
+            </div>
+
+
+
+          </button>
+
+
+
+        </div>
+
+
+
+
+
+
+
+        <div *ngIf="incidentesFiltrados.length === 0" class="flex flex-col items-center justify-center text-center py-20 text-gray-400">
+
+
+
+          <span class="material-symbols-outlined !text-4xl mb-2 opacity-50">search_off</span>
+
+
+
+          <p class="text-sm font-bold">No hay incidentes con ese filtro o búsqueda</p>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <!-- ========================================== -->
+
+
+
+    <!-- VISTA DOCKED / LISTA COMPACTA -->
+
+
+
+    <!-- Se muestra como lista lateral cuando hay un incidente seleccionado -->
+
+
+
+    <!-- ========================================== -->
+
+
+
+    <div *ngIf="incidenteSeleccionado" id="dockedContent" class="flex-1 min-h-0 flex flex-col bg-white h-full animate-fade-in">
+
+
+
+      <div class="h-16 shrink-0 flex items-center justify-between px-4 border-b border-gray-100 bg-white">
+
+
+
+        <div>
+
+
+
+          <h1 class="text-base font-black text-gray-900 flex items-center gap-1.5">
+
+
+
+            <span class="material-symbols-outlined !text-xl text-red-500">emergency</span>Incidentes
+
+
+
+          </h1>
+
+
+
+          <p class="text-[11px] text-gray-400 font-semibold -mt-0.5">{{ incidentesFiltrados.length }} incidentes listados</p>
+
+
+
+        </div>
+
+
+
+        <div class="flex items-center gap-1">
+
+
+
+          <button (click)="cargar()" title="Refrescar" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500"><span class="material-symbols-outlined !text-lg">refresh</span></button>
+
+
+
+          <div *ngIf="puedeExportar" class="relative">
+
+
+
+            <button (click)="$event.stopPropagation(); toggleExportarListadoMenu()"
+
+
+
+                    [disabled]="exportandoReporte || !incidentesFiltrados.length"
+
+
+
+                    title="Exportar reporte del listado"
+
+
+
+                    class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 cursor-pointer disabled:opacity-40">
+
+
+
+              <span class="material-symbols-outlined !text-lg">download</span>
+
+
+
+            </button>
+
+
+
+            <div *ngIf="exportarListadoMenuAbierto" (click)="$event.stopPropagation()"
+
+
+
+                 class="absolute left-0 mt-1.5 w-44 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-50 animate-fade-in text-xs divide-y divide-gray-100">
+
+
+
+              <button (click)="ejecutarExportarListado('pdf')" class="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-red-50 text-gray-700 hover:text-red-700 transition-colors font-medium cursor-pointer">
+
+
+
+                <span class="material-symbols-outlined !text-base text-red-500">picture_as_pdf</span>
+
+
+
+                <span>Lista en PDF</span>
+
+
+
+              </button>
+
+
+
+              <button (click)="ejecutarExportarListado('excel')" class="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 transition-colors font-medium cursor-pointer">
+
+
+
+                <span class="material-symbols-outlined !text-base text-emerald-500">table_view</span>
+
+
+
+                <span>Lista en Excel</span>
+
+
+
+              </button>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+          <button *ngIf="puedeAtender()" (click)="abrirModalCrear()" title="Nueva incidencia" class="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center"><span class="material-symbols-outlined !text-lg">add</span></button>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+
+
+
+
+      <div class="px-3 pt-3 pb-2 shrink-0 space-y-2 border-b border-gray-100 bg-white">
+
+
+
+        <div class="relative">
+
+
+
+          <span class="material-symbols-outlined !text-base text-gray-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+
+
+
+          <input type="text" [(ngModel)]="busquedaLobby" (ngModelChange)="aplicarFiltrosLobby()" placeholder="Buscar código, dirección, operador..."
+
+
+
+                 class="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-400 outline-none">
+
+
+
+        </div>
+
+
+
+        <div class="flex gap-1.5 overflow-x-auto pb-0.5">
+
+
+
+          <button (click)="setFiltro('verificar')" [ngClass]="filtroActual === 'verificar' ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-amber-50 text-amber-700 border-amber-200'" class="px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0">Por verificar</button>
+
+
+
+          <button (click)="setFiltro('atencion')" [ngClass]="filtroActual === 'atencion' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-emerald-50 text-emerald-700 border-emerald-200'" class="px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0">En atención</button>
+
+
+
+          <button (click)="setFiltro('cerrado')" [ngClass]="filtroActual === 'cerrado' ? 'bg-gray-200 text-gray-700 border-gray-300' : 'bg-gray-100 text-gray-500 border-gray-200'" class="px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0">Cerrados</button>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+
+
+
+
+      <div class="flex-1 overflow-y-auto divide-y divide-gray-50 bg-white">
+
+
+
+        <div *ngFor="let inc of incidentesFiltrados"
+
+
+
+             (click)="abrirDetalle(inc)"
+
+
+
+             [ngClass]="inc.id === incidenteSeleccionado.id ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50 border-transparent'"
+
+
+
+             class="p-3.5 flex gap-3 cursor-pointer border-l-4 transition-colors">
+
+
+
+             
+
+
+
+             <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg shrink-0">
+
+
+
+               {{ inc._iconoTipo || '🚨' }}
+
+
+
+             </div>
+
+
+
+             
+
+
+
+             <div class="flex-1 min-w-0">
+
+
+
+               <div class="flex items-center justify-between gap-2">
+
+
+
+                 <p class="text-sm font-bold text-gray-800 truncate">{{ inc._etiquetaTipo || inc.emergencyType }}</p>
+
+
+
+                 <span class="text-[10px] text-gray-400 shrink-0">{{ inc._fechaFormateada }}</span>
+
+
+
+               </div>
+
+
+
+               <p class="text-[11px] text-gray-400 font-mono truncate">{{ inc.trackingCode }}</p>
+
+
+
+               <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+
+
+
+                 <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border" [ngClass]="inc._claseEstado">{{ inc._etiquetaEstado }}</span>
+
+
+
+                 <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border" [ngClass]="inc._claseGravedadVisual">{{ inc._etiquetaGravedadVisual }}</span>
+
+
+
+               </div>
+
+
+
+             </div>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+  </section>
+
+
+
+
+
+
+
+  <!-- ========================================== -->
+
+
+
+  <!-- COLUMNA WORKSPACE / DETALLES (MASTER-DETAIL) -->
+
+
+
+  <!-- Se desliza desde la derecha al seleccionar un incidente -->
+
+
+
+  <!-- ========================================== -->
+
+
+
+  <section *ngIf="incidenteSeleccionado" id="workspaceCol" class="flex-1 min-w-0 flex flex-col bg-gray-50 h-full relative anim-slide-in">
+
+
+
+    <!-- Header de Detalles -->
+
+
+
+    <header class="shrink-0 bg-white border-b border-gray-200 px-5 pt-3">
+
+
+
+      <div class="flex items-start justify-between gap-3 mb-3">
+
+
+
+        <div class="flex items-start gap-2">
+
+
+
+          <button (click)="cerrarDetalle()" class="w-9 h-9 mt-0.5 rounded-full hover:bg-gray-100 items-center justify-center text-gray-500 shrink-0 hidden md:flex">
+
+
+
+            <span class="material-symbols-outlined">close</span>
+
+
+
+          </button>
+
+
+
+          <button (click)="cerrarDetalle()" class="w-9 h-9 mt-0.5 rounded-full hover:bg-gray-100 items-center justify-center text-gray-500 shrink-0 md:hidden flex">
+
+
+
+            <span class="material-symbols-outlined">arrow_back</span>
+
+
+
+          </button>
+
+
+
+          <div>
+
+
+
+            <p class="text-[10px] uppercase tracking-wider font-bold text-gray-400">Mesa de trabajo operativa</p>
+
+
+
+            <h2 class="text-lg font-black text-gray-900 mt-0.5 flex items-center gap-2 flex-wrap">
+
+
+
+              <span class="text-xl leading-none">{{ $any(incidenteSeleccionado)._iconoTipo }}</span>
+
+
+
+              <span>{{ $any(incidenteSeleccionado)._etiquetaTipo }}</span>
+
+
+
+              <span class="font-mono text-[13px] text-gray-500 font-medium bg-gray-50 px-2 py-0.5 rounded border border-gray-200">{{ incidenteSeleccionado.trackingCode }}</span>
+
+
+
+            </h2>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+        <div class="flex items-center gap-2 shrink-0">
+
+
+
+          <!-- Dropdown Exportar -->
+
+
+
+          <div *ngIf="puedeExportar" class="relative">
+
+
+
+            <button (click)="$event.stopPropagation(); toggleExportarMenu()" [disabled]="exportandoReporte" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-md transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait">
+
+
+
+              <span class="material-symbols-outlined !text-sm text-gray-600" [class.animate-spin]="exportandoReporte">{{ exportandoReporte ? 'progress_activity' : 'download' }}</span>
+
+
+
+              <span>{{ exportandoReporte ? 'Generando…' : 'Exportar' }}</span>
+
+
+
+              <span class="material-symbols-outlined !text-xs transition-transform" [class.rotate-180]="exportarMenuAbierto">expand_more</span>
+
+
+
+            </button>
+
+
+
+            <div *ngIf="exportarMenuAbierto" (click)="$event.stopPropagation()" class="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-50 animate-fade-in text-xs divide-y divide-gray-100">
+
+
+
+              <button (click)="ejecutarExportar('pdf')" class="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-red-50 text-gray-700 hover:text-red-700 transition-colors font-medium cursor-pointer">
+
+
+
+                <span class="material-symbols-outlined !text-base text-red-500">picture_as_pdf</span>
+
+
+
+                <span>Descargar PDF</span>
+
+
+
+              </button>
+
+
+
+              <button (click)="ejecutarExportar('excel')" class="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 transition-colors font-medium cursor-pointer">
+
+
+
+                <span class="material-symbols-outlined !text-base text-emerald-500">table_view</span>
+
+
+
+                <span>Descargar Excel</span>
+
+
+
+              </button>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <div class="w-px h-6 bg-gray-200 mx-1"></div>
+
+
+
+          <button (click)="toggleTutorial()" title="Guía de esta sección" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md transition-colors">
+
+
+
+            <span class="material-symbols-outlined !text-sm">help</span><span class="hidden lg:inline">Guía</span>
+
+
+
+          </button>
+
+
+
+          <button (click)="abrirChat(incidenteSeleccionado)" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-gray-900 hover:bg-gray-800 rounded-md transition-colors">
+
+
+
+            <span class="material-symbols-outlined !text-sm">forum</span><span class="hidden lg:inline">Sala de Crisis</span>
+
+
+
+          </button>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+      
+
+
+
+      <!-- Navegación de pestañas internas del detalle -->
+
+
+
+      <nav class="flex gap-1 -mb-px overflow-x-auto">
+
+
+
+        <button (click)="cambiarPestana('DETALLE')" 
+
+
+
+                [ngClass]="pestanaActiva === 'DETALLE' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" 
+
+
+
+                class="flex items-center gap-1.5 whitespace-nowrap pb-2.5 px-2 border-b-2 font-bold text-[13px] transition-colors cursor-pointer select-none outline-none">
+
+
+
+          <span class="material-symbols-outlined !text-base text-sky-400">assignment</span>Detalles
+
+
+
+        </button>
+
+
+
+        <button *ngIf="puedeAtender()" (click)="cambiarPestana('DESPACHO')" 
+
+
+
+                [disabled]="incidenteSeleccionado.currentStatus === 'CERRADO'|| incidenteSeleccionado.currentStatus === 'VERIFICACION_PENDIENTE'||incidenteSeleccionado.currentStatus === 'RESUELTO'||incidenteSeleccionado.currentStatus === 'ELIMINADO'"
+
+
+
+                [ngClass]="pestanaActiva === 'DESPACHO' ? 'border-rose-500 text-rose-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" 
+
+
+
+                class="flex items-center gap-1.5 whitespace-nowrap pb-2.5 px-2 border-b-2 font-bold text-[13px] transition-colors cursor-pointer select-none outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+
+
+
+          <span class="material-symbols-outlined !text-base text-rose-400">fire_truck</span>Despacho
+
+
+
+        </button>
+
+
+
+        <button *ngIf="puedeAtender()" (click)="cambiarPestana('ESCALAMIENTO')" 
+
+
+
+                [disabled]="incidenteSeleccionado.currentStatus === 'CERRADO' || incidenteSeleccionado.currentStatus === 'VERIFICACION_PENDIENTE'|| incidenteSeleccionado.currentStatus === 'RESUELTO'||incidenteSeleccionado.currentStatus === 'ELIMINADO'"
+
+
+
+                [ngClass]="pestanaActiva === 'ESCALAMIENTO' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" 
+
+
+
+                class="flex items-center gap-1.5 whitespace-nowrap pb-2.5 px-2 border-b-2 font-bold text-[13px] transition-colors cursor-pointer select-none outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+
+
+
+          <span class="material-symbols-outlined !text-base text-orange-400">sync</span>Escalamiento
+
+
+
+        </button>
+
+
+
+        <button (click)="cambiarPestana('BITACORA')" 
+
+
+
+                [ngClass]="pestanaActiva === 'BITACORA' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" 
+
+
+
+                class="flex items-center gap-1.5 whitespace-nowrap pb-2.5 px-2 border-b-2 font-bold text-[13px] transition-colors cursor-pointer select-none outline-none">
+
+
+
+          <span class="material-symbols-outlined !text-base text-purple-400">history</span>Bitácora
+
+
+
+        </button>
+
+
+
+        <button (click)="cambiarPestana('EVIDENCIAS')" 
+
+
+
+                [ngClass]="pestanaActiva === 'EVIDENCIAS' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" 
+
+
+
+                class="flex items-center gap-1.5 whitespace-nowrap pb-2.5 px-2 border-b-2 font-bold text-[13px] transition-colors cursor-pointer select-none outline-none">
+
+
+
+          <span class="material-symbols-outlined !text-base text-amber-400">folder_special</span>Evidencias
+
+
+
+        </button>
+
+
+
+        <button (click)="cambiarPestana('ALERTAS')" 
+
+
+
+                [ngClass]="pestanaActiva === 'ALERTAS' ? 'border-red-500 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" 
+
+
+
+                class="flex items-center gap-1.5 whitespace-nowrap pb-2.5 px-2 border-b-2 font-bold text-[13px] transition-colors cursor-pointer select-none outline-none">
+
+
+
+          <span class="material-symbols-outlined !text-base text-red-400">emergency</span>Alertas y Ciudadanos
+
+
+
+        </button>
+
+
+
+        <button (click)="cambiarPestana('CASTIGOS')" 
+
+
+
+                [ngClass]="pestanaActiva === 'CASTIGOS' ? 'border-rose-500 text-rose-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" 
+
+
+
+                class="flex items-center gap-1.5 whitespace-nowrap pb-2.5 px-2 border-b-2 font-bold text-[13px] transition-colors cursor-pointer select-none outline-none">
+
+
+
+          <span class="material-symbols-outlined !text-base text-rose-500">gavel</span>Sanciones y Castigos
+
+
+
+        </button>
+
+
+
+      </nav>
+
+
+
+    </header>
+
+
+
+
+
+
+
+    <!-- Tip Banner para el tutorial (oculto en Escalamiento para maximizar espacio vertical) -->
+
+
+
+    <div *ngIf="bannerAyudaVisible && pestanaActiva !== 'ESCALAMIENTO'" class="shrink-0 bg-indigo-50/70 border-b border-indigo-100 px-5 py-2 flex items-center justify-between gap-3">
+
+
+
+      <p class="text-[12px] text-indigo-700 flex items-center gap-1.5">
+
+
+
+        <span class="material-symbols-outlined !text-base">info</span>
+
+
+
+        <span>{{ tipsPorPestana[pestanaActiva].short }}</span>
+
+
+
+      </p>
+
+
+
+      <div class="flex items-center gap-3 shrink-0">
+
+
+
+        <button (click)="toggleTutorial()" class="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 underline underline-offset-2">Ver guía completa</button>
+
+
+
+        <button (click)="cerrarBannerAyuda()" class="text-indigo-400 hover:text-indigo-600"><span class="material-symbols-outlined !text-base">close</span></button>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <!-- PANELES DE CONTENIDO DE PESTAÑAS -->
+
+
+
+    <div class="flex-1 overflow-y-auto relative">
+
+
+
+       
+
+
+
+      <!-- Panel de Detalles -->
+
+
+
+      <div *ngIf="pestanaActiva === 'DETALLE'" class="p-5">
+
+
+
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 max-w-6xl">
+
+
+
+          <div class="xl:col-span-2 space-y-5">
+
+
+
+            <div class="flex flex-wrap gap-8 bg-white border border-gray-200 rounded-xl p-4">
+
+
+
+              <div>
+
+
+
+                <p class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Estado actual</p>
+
+
+
+                <span class="inline-flex items-center px-2 py-0.5 mt-1 rounded-md text-[11px] font-bold border" [ngClass]="$any(incidenteSeleccionado)._claseEstado">{{ $any(incidenteSeleccionado)._etiquetaEstado }}</span>
+
+
+
+              </div>
+
+
+
+              <div>
+
+
+
+                <p class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Gravedad reportada</p>
+
+
+
+                <span class="inline-flex items-center px-2 py-0.5 mt-1 rounded-md text-[11px] font-bold border" [ngClass]="$any(incidenteSeleccionado)._claseGravedadVisual">{{ $any(incidenteSeleccionado)._etiquetaGravedadVisual }}</span>
+
+
+
+              </div>
+
+
+
+              <div>
+
+
+
+                <p class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Tiempo de reporte</p>
+
+
+
+                <p class="text-[13px] font-semibold text-gray-700 mt-1">{{ $any(incidenteSeleccionado)._fechaFormateada }}</p>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+
+
+
+
+            <div class="relative w-full h-[380px] rounded-xl overflow-hidden shadow-sm border border-gray-200 map-fake bg-gray-100">
+
+
+
+              <app-osm-map altura="100%" [centro]="mapCenter" [zoom]="mapZoom" [marcadores]="marcadoresMapa" />
+
+
+
+              <div class="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-md border border-gray-200 text-xs space-y-2 z-10">
+
+
+
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-600 inline-block"></span><span class="font-medium text-gray-700">Incidente Activo</span></div>
+
+
+
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span><span class="font-medium text-gray-700">Unidades Disponibles</span></div>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <!-- Acciones Operativas -->
+
+
+
+          <div class="space-y-5">
+
+
+
+            <div *ngIf="!puedeAtender()" class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs text-gray-600">
+
+
+
+              <span class="material-symbols-outlined !text-base align-middle mr-1">visibility</span>
+
+
+
+              Vista de solo lectura: la atención la realiza el personal de la entidad responsable.
+
+
+
+            </div>
+
+
+
+            <div *ngIf="puedeAtender()" class="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+
+
+
+              <h4 class="text-[12px] uppercase tracking-wider font-black text-blue-800 mb-3 flex items-center gap-2">
+
+
+
+                <span class="material-symbols-outlined !text-base">settings_suggest</span>Acciones Operativas
+
+
+
+              </h4>
+
+
+
+
+
+
+
+              <!-- Banner de Modo Supervisión / Restricción de Operación -->
+
+
+
+              <div *ngIf="!puedeOperarIncidente(incidenteSeleccionado)" class="bg-amber-50 border border-amber-200/80 rounded-xl p-3.5 mb-3 text-xs text-amber-900 shadow-xs flex items-start gap-2.5">
+
+
+
+                <span class="material-symbols-outlined text-amber-600 !text-xl shrink-0 mt-0.5">shield_person</span>
+
+
+
+                <div class="space-y-1">
+
+
+
+                  <div class="font-bold flex items-center gap-1.5 text-amber-950">
+
+
+
+                    <span>Modo Supervisión</span>
+
+
+
+                    <span class="text-[10px] bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded font-mono font-medium">SOLO LECTURA</span>
+
+
+
+                  </div>
+
+
+
+                  <p class="text-amber-800 leading-relaxed">
+
+
+
+                    Usted no pertenece a la entidad o municipalidad correspondiente para operar sobre este incidente. Puede auditar la información, pero las acciones operativas están restringidas a la entidad asignada.
+
+
+
+                  </p>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+
+
+
+
+              <div *ngIf="incidenteSeleccionado.currentStatus === 'CERRADO'" class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm mt-4">
+
+
+
+                <h4 class="text-[12px] uppercase tracking-wider font-black text-gray-700 mb-2 flex items-center gap-2">
+
+
+
+                  <span class="material-symbols-outlined text-base">lock</span> Incidente Cerrado
+
+
+
+                </h4>
+
+
+
+                <p class="text-xs text-gray-500 mb-4">Este incidente ha finalizado. Acciones bloqueadas para preservar auditoría.</p>
+
+
+
+                <div class="border-t border-gray-200 pt-4">
+
+
+
+                  <label class="block text-[11px] font-bold text-gray-600 mb-1">Motivo de Reapertura (Auditoría)</label>
+
+
+
+                  <textarea [(ngModel)]="motivoReapertura" rows="2" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-amber-500 mb-2 resize-none bg-white"></textarea>
+
+
+
+                  <button (click)="reaperturarIncidente()" [disabled]="!puedeOperarIncidente(incidenteSeleccionado) || procesandoAccion || !motivoReapertura.trim()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+
+
+
+                    <span class="material-symbols-outlined text-sm">lock_open</span>{{ procesandoAccion ? 'Reaperturando...' : 'Reaperturar Incidente' }}
+
+
+
+                  </button>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+
+
+
+
+              <div *ngIf="incidenteSeleccionado.currentStatus === 'VERIFICACION_PENDIENTE'" class="bg-white p-3 rounded-lg border border-blue-200 mb-3 space-y-3">
+
+
+
+                <label class="block text-[11px] font-bold text-gray-600">Confirmar Gravedad Real</label>
+
+
+
+                <select [(ngModel)]="gravedadSeleccionada" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-blue-500">
+
+
+
+                  <option value="ALTA">Alta (Crítica)</option><option value="MEDIA">Media</option><option value="BAJA">Baja</option>
+
+
+
+                </select>
+
+
+
+                <button (click)="verificarIncidente()" [disabled]="!puedeOperarIncidente(incidenteSeleccionado) || verificando || cerrando" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-50 cursor-pointer">
+
+
+
+                  {{ verificando ? 'Verificando...' : 'Verificar y Atender' }}
+
+
+
+                </button>
+
+
+
+              </div>
+
+
+
+
+
+
+
+              <div *ngIf="incidenteSeleccionado.currentStatus !== 'CERRADO' && incidenteSeleccionado.currentStatus !== 'ELIMINADO' && incidenteSeleccionado.currentStatus !== 'VERIFICACION_PENDIENTE'" class="mt-4 pt-4 border-t border-blue-200">
+
+
+
+                <textarea [(ngModel)]="notaOperador" rows="2" placeholder="Registrar observación o novedad..." class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-blue-500 mb-2 resize-none"></textarea>
+
+
+
+                <button (click)="agregarNotaManual()" [disabled]="!puedeOperarIncidente(incidenteSeleccionado) || procesandoAccion || !notaOperador.trim()" class="w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-bold py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-50">
+
+
+
+                  Agregar a Bitácora
+
+
+
+                </button>
+
+
+
+              </div>
+
+
+
+
+
+
+
+              <div *ngIf="incidenteSeleccionado.currentStatus !== 'CERRADO' && incidenteSeleccionado.currentStatus !== 'ELIMINADO'" class="mt-4 pt-4 border-t border-blue-200">
+
+
+
+                <textarea [(ngModel)]="resolucionCierre" rows="2" placeholder="Detalle de la resolución final..." class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-red-400 mb-2 resize-none"></textarea>
+
+
+
+                <button (click)="cerrarIncidente()" [disabled]="!puedeOperarIncidente(incidenteSeleccionado) || procesandoAccion || !resolucionCierre.trim()" class="w-full bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 font-bold py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-50">
+
+
+
+                  {{ procesandoAccion ? 'Cerrando...' : 'Cerrar Incidencia' }}
+
+
+
+                </button>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+
+
+
+
+            <div *ngIf="incidenteBaseSeleccionado?.assignedUnits?.length" class="bg-white border border-gray-200 rounded-xl p-4">
+
+
+
+              <h4 class="text-[12px] uppercase tracking-wider font-black text-gray-700 mb-3 flex items-center gap-2">
+
+
+
+                <span class="material-symbols-outlined !text-base text-emerald-500">local_shipping</span>Unidades en terreno
+
+
+
+              </h4>
+
+
+
+              <div class="space-y-2">
+
+
+
+                <div *ngFor="let u of unidadesActivasLista" class="bg-gray-50 border border-gray-200 p-2 rounded-lg">
+
+
+
+                  <div class="flex items-center justify-between mb-2">
+
+
+
+                    <span class="text-xs font-bold text-gray-700">{{ u.identificador }}</span>
+
+
+
+                    <button *ngIf="puedeAtender() && puedeOperarIncidente(incidenteSeleccionado)" (click)="cancelarDespacho(u.id)" [disabled]="procesandoAccion" class="text-red-500 hover:text-red-700"><span class="material-symbols-outlined !text-sm">close</span></button>
+
+
+
+                  </div>
+
+
+
+                  <div *ngIf="puedeAtender()" class="flex gap-1">
+
+
+
+                    <button (click)="cambiarEstadoTactico(u.id, 'EN_RUTA')" [disabled]="!puedeOperarIncidente(incidenteSeleccionado) || procesandoAccion || u.estadoActual === 'EN_RUTA'" class="flex-1 text-[9px] uppercase font-bold py-1 bg-white border border-blue-200 text-blue-600 rounded hover:bg-blue-50 disabled:opacity-50">En Ruta</button>
+
+
+
+                    <button (click)="cambiarEstadoTactico(u.id, 'EN_ESCENA')" [disabled]="!puedeOperarIncidente(incidenteSeleccionado) || procesandoAccion || u.estadoActual === 'EN_ESCENA'" class="flex-1 text-[9px] uppercase font-bold py-1 bg-white border border-purple-200 text-purple-600 rounded hover:bg-purple-50 disabled:opacity-50">En Escena</button>
+
+
+
+                    <button (click)="cambiarEstadoTactico(u.id, 'TRASLADO')" [disabled]="!puedeOperarIncidente(incidenteSeleccionado) || procesandoAccion || u.estadoActual === 'TRASLADO'" class="flex-1 text-[9px] uppercase font-bold py-1 bg-white border border-orange-200 text-orange-600 rounded hover:bg-orange-50 disabled:opacity-50">Traslado</button>
+
+
+
+                  </div>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+
+
+
+
+      <!-- Panel Despacho -->
+
+
+
+      <div *ngIf="pestanaActiva === 'DESPACHO'" class="p-5 h-full">
+
+
+
+        <div class="flex flex-col lg:flex-row gap-5 h-[calc(100vh-18rem)] min-h-[420px]">
+
+
+
+          <div class="flex-1 relative rounded-xl overflow-hidden border border-gray-200 min-h-[320px] map-fake">
+
+
+
+            <app-osm-map altura="100%" [centro]="mapCenter" [zoom]="15" [marcadores]="marcadoresMapa" [lineas]="rutasDespacho" [encuadrar]="rutasDespacho.length > 0" />
+
+
+
+            <div class="absolute inset-0 z-10" [ngClass]="isDragging ? 'pointer-events-auto' : 'pointer-events-none'" (dragover)="onDragOver($event)" (drop)="onDrop($event)"></div>
+
+
+
+            <div *ngIf="!puedeOperarIncidente(incidenteSeleccionado)" class="absolute top-3 left-3 bg-amber-500/95 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow border border-amber-600 flex items-center gap-1.5 z-20">
+
+
+
+              <span class="material-symbols-outlined !text-sm">lock</span>Modo supervisión: Despacho deshabilitado
+
+
+
+            </div>
+
+
+
+            <div *ngIf="puedeOperarIncidente(incidenteSeleccionado)" class="absolute top-3 left-3 bg-white/95 text-[11px] font-bold text-gray-600 px-2.5 py-1.5 rounded-lg shadow-sm border border-gray-200 flex items-center gap-1.5 z-20">
+
+
+
+              <span class="material-symbols-outlined !text-sm">drag_indicator</span>Arrastra una unidad hasta el incidente para asignarla
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <aside class="w-full lg:w-72 shrink-0 bg-white border border-gray-200 rounded-xl flex flex-col overflow-hidden">
+
+
+
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+
+
+
+              <h4 class="text-[12px] uppercase tracking-wider font-black text-gray-700">Unidades disponibles</h4>
+
+
+
+              <span class="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold">{{recursosDisponibles.length}}</span>
+
+
+
+            </div>
+
+
+
+            <div class="flex-1 overflow-y-auto divide-y divide-gray-50">
+
+
+
+              <div *ngFor="let recurso of recursosDisponibles" draggable="true" (dragstart)="onDragStart($event, recurso.id!)" (dragend)="onDragEnd($event)" class="p-3 flex items-center gap-3 hover:bg-gray-50 cursor-grab active:cursor-grabbing">
+
+
+
+                <span class="material-symbols-outlined !text-xl text-emerald-500 bg-emerald-50 rounded-lg p-1.5">local_hospital</span>
+
+
+
+                <div class="flex-1 min-w-0">
+
+
+
+                  <p class="text-sm font-bold text-gray-800 truncate">{{ recurso.identificador }}</p>
+
+
+
+                  <p class="text-[11px] text-gray-400" *ngIf="recurso.ubicacionActual">Distancia: {{ recurso.metricasCache?.distancia || '--' }} · ETA: {{ recurso.metricasCache?.eta || '--' }}</p>
+
+
+
+                  <p class="text-[11px] text-gray-400" *ngIf="!recurso.ubicacionActual">GPS no disponible</p>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+              <div *ngIf="recursosDisponibles.length === 0" class="p-5 text-center text-gray-400 text-sm">No hay unidades disponibles en tu entidad.</div>
+
+
+
+            </div>
+
+
+
+          </aside>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+
+
+
+
+      <!-- Panel Escalamiento (Ocupa todo el espacio disponible) -->
+
+
+
+      <div *ngIf="pestanaActiva === 'ESCALAMIENTO'" class="p-4 md:p-6 w-full">
+
+
+
+        <app-incident-escalation [incidente]="incidenteBaseSeleccionado!" [tiposEmergenciaLista]="tiposEmergenciaLista" [alertasDelIncidente]="alertasVinculadas" (operacionExitosa)="manejarEscalamientoExitoso($event)"></app-incident-escalation>
+
+
+
+      </div>
+
+
+
+
+
+
+
+      <!-- Panel Bitácora -->
+
+
+
+      <div *ngIf="pestanaActiva === 'BITACORA'" class="p-5 max-w-3xl">
+
+
+
+        <div class="flex justify-between items-center mb-5">
+
+
+
+          <h4 class="text-sm uppercase tracking-wider font-black text-gray-700">Historial de eventos</h4>
+
+
+
+          <span class="text-xs bg-purple-100 text-purple-800 py-1 px-2 rounded-full font-bold">{{ incidenteBaseSeleccionado?.logEvents?.length || 0 }} registros</span>
+
+
+
+        </div>
+
+
+
+        <div class="relative border-l-2 border-gray-200 ml-3 space-y-6">
+
+
+
+          <div *ngFor="let evento of bitacoraOrdenadaLista" class="relative pl-7">
+
+
+
+            <span class="absolute -left-[9px] top-1 w-4 h-4 rounded-full" [ngClass]="(evento.origin === 'SISTEMA' || evento.origen === 'SISTEMA') ? 'bg-gray-300' : 'bg-blue-500 ring-4 ring-blue-100'"></span>
+
+
+
+            <div class="bg-white border border-gray-100 rounded-xl p-4">
+
+
+
+              <div class="flex justify-between items-start mb-1.5">
+
+
+
+                <div class="flex items-center gap-2"><span class="material-symbols-outlined !text-lg" [ngClass]="evento.iconoDatos?.color">{{ evento.iconoDatos?.icono }}</span><h5 class="text-sm font-bold text-gray-800">{{ evento.accionFormateada }}</h5></div>
+
+
+
+                <time class="text-[11px] font-mono text-gray-400 bg-gray-50 px-2 py-0.5 rounded">{{ evento.fechaFormateada }} {{ evento.horaFormateada }}</time>
+
+
+
+              </div>
+
+
+
+              <p class="text-sm text-gray-600">{{ evento.detail || evento.detalle }}</p>
+
+
+
+              <p class="mt-2 text-[10px] uppercase font-bold" [ngClass]="(evento.origin === 'HUMANO' || evento.origen === 'HUMANO') ? 'text-blue-600' : 'text-gray-400'">{{ (evento.origin === 'HUMANO' || evento.origen === 'HUMANO') ? 'Operador ID: ' + ((evento.operatorId || evento.operadorId) | slice:0:8) + '...' : 'Proceso automático' }}</p>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+          <div *ngIf="!incidenteBaseSeleccionado?.logEvents?.length" class="pl-7 py-4 text-sm text-gray-400">No hay registros en la bitácora aún.</div>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+
+
+
+
+      <!-- Panel Evidencias -->
+
+
+
+      <div *ngIf="pestanaActiva === 'EVIDENCIAS'" class="p-5 max-w-6xl">
+
+
+
+        <div class="flex justify-between items-center mb-5">
+
+
+
+          <h4 class="text-sm uppercase tracking-wider font-black text-gray-700">Material adjunto</h4>
+
+
+
+          <span class="text-xs bg-amber-100 text-amber-800 py-1 px-2 rounded-full font-bold">{{ incidenteBaseSeleccionado?.consolidatedEvidence?.length || 0 }} elementos</span>
+
+
+
+        </div>
+
+
+
+        <div *ngIf="incidenteBaseSeleccionado?.consolidatedEvidence?.length; else sinEvidencias" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+
+
+          <div *ngFor="let evidencia of incidenteBaseSeleccionado!.consolidatedEvidence" class="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
+
+
+
+            <div class="bg-black h-40 flex items-center justify-center relative">
+
+
+
+              <img *ngIf="evidencia.type === 'IMAGEN' || evidencia.type === 'IMAGE' || evidencia.type === 'FOTO'" [src]="evidencia.content" class="w-full h-full object-cover">
+
+
+
+              <video *ngIf="evidencia.type === 'VIDEO'" [src]="evidencia.content" controls class="w-full h-full object-contain"></video>
+
+
+
+              <div *ngIf="evidencia.type === 'AUDIO'" class="w-full px-4 flex flex-col items-center"><span class="text-3xl mb-2">🎙️</span><audio [src]="evidencia.content" controls class="w-full h-8"></audio></div>
+
+
+
+              <div *ngIf="evidencia.type === 'TEXTO'" class="w-full h-full bg-gray-100 p-4 flex flex-col items-center justify-center text-center overflow-y-auto"><p class="text-xs text-gray-700 italic">"{{ evidencia.content }}"</p></div>
+
+
+
+              <span class="absolute top-2 right-2 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded uppercase">{{ evidencia.type }}</span>
+
+
+
+            </div>
+
+
+
+            <div class="p-3">
+
+
+
+              <p class="text-xs font-medium text-gray-700 mb-1 line-clamp-2">{{ evidencia.description || 'Sin descripción' }}</p>
+
+
+
+              <div class="flex justify-between items-center text-[10px] text-gray-400"><span>{{ $any(evidencia)._fechaFormateada }}</span><span class="font-mono">{{ $any(evidencia)._codigoAlerta }}</span></div>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+        <ng-template #sinEvidencias>
+
+
+
+          <div class="rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 py-10"><span class="material-symbols-outlined !text-3xl mb-1">add_photo_alternate</span><p class="text-xs font-bold">Sin evidencias adjuntas</p></div>
+
+
+
+        </ng-template>
+
+
+
+      </div>
+
+
+
+
+
+
+
+      <!-- Panel Alertas -->
+
+
+
+      <div *ngIf="pestanaActiva === 'ALERTAS'" class="p-5 max-w-5xl">
+
+
+
+        <div class="flex justify-between items-center mb-5">
+
+
+
+          <h4 class="text-sm uppercase tracking-wider font-black text-gray-700">Alertas que componen este incidente</h4>
+
+
+
+          <span class="text-xs bg-red-100 text-red-800 py-1 px-2 rounded-full font-bold">{{ alertasVinculadas.length }} alertas</span>
+
+
+
+        </div>
+
+
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+
+
+          <div *ngFor="let alerta of alertasVinculadas" class="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col">
+
+
+
+            <div class="bg-gray-800 p-3 flex justify-between items-center text-white">
+
+
+
+              <div class="flex items-center gap-2"><span class="text-lg">🚨</span><div><h5 class="font-bold text-sm font-mono tracking-wide">{{ alerta.alertCode }}</h5><p class="text-[10px] text-gray-400">{{ $any(alerta)._fechaFormateada }} {{ $any(alerta)._horaFormateada }}</p></div></div>
+
+
+
+              <span class="text-[10px] font-bold bg-white/20 px-2 py-1 rounded uppercase">{{ alerta.emergencyType }}</span>
+
+
+
+            </div>
+
+
+
+            <div class="p-4 flex-1">
+
+
+
+              <div *ngIf="alerta.reporter; else ciudadanoDesconocido">
+
+
+
+                <div class="flex items-center justify-between mb-2">
+
+
+
+                  <h6 class="text-xs font-bold text-gray-500 uppercase">Datos del Alertante</h6>
+
+
+
+                  <app-sancion-chip [nivel]="getCitizenPenaltyLevel(alerta.reporter)" size="sm"></app-sancion-chip>
+
+
+
+                </div>
+
+
+
+                <div class="grid grid-cols-2 gap-y-2 text-sm mb-4">
+
+
+
+                  <div><p class="text-[10px] text-gray-400">Nombre Completo</p><p class="font-medium text-gray-800 truncate">{{ (alerta.reporter.firstName || alerta.reporter.nombres || '') + ' ' + (alerta.reporter.lastName || alerta.reporter.apellidos || '') }}</p></div>
+
+
+
+                  <div><p class="text-[10px] text-gray-400">DNI</p><p class="font-medium text-gray-800">{{ alerta.reporter.dni || 'No registrado' }}</p></div>
+
+
+
+                  <div><p class="text-[10px] text-gray-400">Teléfono</p><p class="font-medium text-gray-800">{{ alerta.reporter.phone || alerta.reporter.telefono || 'Sin teléfono' }}</p></div>
+
+
+
+                  <div><p class="text-[10px] text-gray-400">Email</p><p class="font-medium text-gray-800 truncate">{{ alerta.reporter.email || 'Sin correo' }}</p></div>
+
+
+
+                </div>
+
+
+
+                <div class="mt-auto pt-3 border-t border-gray-100" *ngIf="getAlertReporterPenalty(alerta) as sc">
+
+
+
+                  <p class="text-[10px] text-gray-400 mb-1.5">Confiabilidad del Perfil</p>
+
+
+
+                  <div *ngIf="sc.suspendido_permanente" class="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-2 rounded-lg text-xs font-bold border border-red-100"><span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span> ALERTA: CIUDADANO BLOQUEADO</div>
+
+
+
+                  <div *ngIf="!sc.suspendido_permanente && isReporterTemporaryBlockActive(sc)" class="flex items-center gap-2 bg-orange-50 text-orange-700 px-3 py-2 rounded-lg text-xs font-bold border border-orange-100"><span class="h-3 w-3 rounded-full bg-orange-500"></span> Bloqueo temporal activo hasta {{ sc.fecha_fin_bloqueo_temporal | date:'short' }}</div>
+
+
+
+                  <div *ngIf="!sc.suspendido_permanente && !isReporterTemporaryBlockActive(sc) && (sc.advertencias_acumuladas ?? 0) > 0" class="flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-2 rounded-lg text-xs font-bold border border-amber-100"><span class="h-3 w-3 rounded-full bg-amber-500"></span> Riesgo Medio ({{ sc.advertencias_acumuladas }} Advertencias)</div>
+
+
+
+                  <div *ngIf="!sc.suspendido_permanente && !isReporterTemporaryBlockActive(sc) && (sc.advertencias_acumuladas ?? 0) === 0" class="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg text-xs font-bold border border-emerald-100"><span class="h-3 w-3 rounded-full bg-emerald-500"></span> Perfil Confiable (0 Advertencias)</div>
+
+
+
+                </div>
+
+
+
+                <div *ngIf="canPenalizeAlerts" class="pt-3">
+
+
+
+                  <p *ngIf="penalizedAlertIds.has(alerta.alertId)" class="text-xs font-bold text-gray-500 flex items-center gap-1"><span class="material-symbols-outlined !text-base">gavel</span> Alerta ya castigada</p>
+
+
+
+                  <ng-container *ngIf="!penalizedAlertIds.has(alerta.alertId)">
+
+
+
+                    <div *ngIf="openedAlertPenaltyId !== alerta.alertId" class="flex gap-2">
+
+
+
+                      <button type="button" (click)="openAlertPenalty(alerta)"
+
+
+
+                        class="flex-1 flex items-center justify-center gap-1 border border-red-200 text-red-600 hover:bg-red-50 font-bold py-1.5 px-2 rounded-lg text-xs transition-colors">
+
+
+
+                        <span class="material-symbols-outlined !text-base">gavel</span> Castigo rápido
+
+
+
+                      </button>
+
+
+
+                      <button type="button" (click)="navigateToReporterPenalty(alerta)"
+
+
+
+                        class="flex-1 flex items-center justify-center gap-1 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-bold py-1.5 px-2 rounded-lg text-xs transition-colors">
+
+
+
+                        <span class="material-symbols-outlined !text-base">tab</span> Ir a pestaña Castigos
+
+
+
+                      </button>
+
+
+
+                    </div>
+
+
+
+                    <div *ngIf="openedAlertPenaltyId === alerta.alertId" class="space-y-2">
+
+
+
+                      <label class="text-[10px] text-gray-500 font-bold uppercase" [attr.for]="'motivo-' + alerta.alertId">Motivo (obligatorio)</label>
+
+
+
+                      <textarea [id]="'motivo-' + alerta.alertId" [(ngModel)]="alertPenaltyReason" rows="2" maxlength="500"
+
+
+
+                        placeholder="Ej.: alerta falsa, no había emergencia en el lugar"
+
+
+
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-red-400 resize-none"></textarea>
+
+
+
+                      <p class="text-[10px] text-gray-500">Sube un nivel el castigo del ciudadano (aviso → bloqueo temporal 24 h → bloqueo permanente).</p>
+
+
+
+                      <div class="flex gap-2">
+
+
+
+                        <button type="button" (click)="cancelAlertPenalty()" [disabled]="isPenalizingAlert"
+
+
+
+                          class="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-bold py-1.5 rounded-lg text-xs disabled:opacity-50">Cancelar</button>
+
+
+
+                        <button type="button" (click)="confirmAlertPenalty(alerta)" [disabled]="isPenalizingAlert || !alertPenaltyReason.trim()"
+
+
+
+                          class="flex-1 bg-red-600 text-white hover:bg-red-700 font-bold py-1.5 rounded-lg text-xs disabled:opacity-50">{{ isPenalizingAlert ? 'Aplicando…' : 'Confirmar castigo' }}</button>
+
+
+
+                      </div>
+
+
+
+                    </div>
+
+
+
+                  </ng-container>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+              <ng-template #ciudadanoDesconocido>
+
+
+
+                <div class="h-full flex flex-col items-center justify-center text-center text-gray-400 py-6"><span class="material-symbols-outlined !text-3xl mb-2 opacity-50">person_off</span><p class="text-xs font-bold">Datos de usuario no disponibles</p></div>
+
+
+
+              </ng-template>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+      <!-- Panel Sanciones y Castigos -->
+
+
+
+      <div *ngIf="pestanaActiva === 'CASTIGOS'" class="p-5 max-w-5xl space-y-6">
+
+
+
+
+
+
+
+        <!-- Encabezado del panel -->
+
+
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-100 p-4 rounded-xl">
+
+
+
+          <div>
+
+
+
+            <div class="flex items-center gap-2">
+
+
+
+              <span class="material-symbols-outlined text-rose-600 !text-2xl">gavel</span>
+
+
+
+              <h4 class="text-base font-black text-rose-950">
+
+
+
+                Gestión de Sanciones a Ciudadanos Alertantes
+
+
+
+              </h4>
+
+
+
+            </div>
+
+
+
+            <p class="text-xs text-rose-800/80 mt-1 max-w-2xl">
+
+
+
+              Aplica sanciones disciplinarias a los ciudadanos que emitieron alertas en este incidente. El sistema agrupa todas las alertas por usuario e incrementa gradualmente la sanción: <strong>Aviso &rarr; Bloqueo 24h/72h &rarr; Suspensión Definitiva</strong>.
+
+
+
+            </p>
+
+
+
+          </div>
+
+
+
+          <div class="flex items-center gap-2 shrink-0">
+
+
+
+            <span class="text-xs font-bold text-rose-700 bg-rose-100/70 border border-rose-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+
+
+
+              <span class="material-symbols-outlined !text-base">verified_user</span>
+
+
+
+              {{ uniqueReporters.length }} {{ uniqueReporters.length === 1 ? 'ciudadano identificado' : 'ciudadanos identificados' }}
+
+
+
+            </span>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+
+
+
+
+        <!-- Si no hay alertas con ciudadano registrado -->
+
+
+
+        <div *ngIf="uniqueReporters.length === 0" class="p-8 text-center bg-gray-50 border border-dashed border-gray-200 rounded-xl text-gray-500">
+
+
+
+          <span class="material-symbols-outlined !text-4xl text-gray-300 mb-2">person_off</span>
+
+
+
+          <p class="text-sm font-bold">No hay ciudadanos alertantes registrados vinculados a este incidente.</p>
+
+
+
+          <p class="text-xs text-gray-400 mt-1">Las alertas vinculadas fueron reportadas de forma anónima o no contienen un perfil de usuario registrado para sancionar.</p>
+
+
+
+        </div>
+
+
+
+
+
+
+
+        <!-- Banner informativo si hay alertas anónimas además de alertantes registrados -->
+
+
+
+        <div *ngIf="uniqueReporters.length > 0 && totalAnonymousAlerts > 0" class="bg-gray-50 border border-gray-200 text-gray-600 px-3.5 py-2 rounded-lg text-xs flex items-center gap-2">
+
+
+
+          <span class="material-symbols-outlined !text-base text-gray-400">info</span>
+
+
+
+          <span>Este incidente incluye <strong>{{ totalAnonymousAlerts }} alerta(s) anónima(s)</strong> no asociadas a ningún ciudadano registrado.</span>
+
+
+
+        </div>
+
+
+
+
+
+
+
+        <!-- Selector de ciudadanos alertantes identificados en el incidente -->
+
+
+
+        <div *ngIf="uniqueReporters.length > 0">
+
+
+
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-2.5">
+
+
+
+            Ciudadanos alertantes identificados en este incidente ({{ uniqueReporters.length }})
+
+
+
+          </label>
+
+
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+
+
+
+            <div *ngFor="let u of uniqueReporters"
+
+
+
+                 (click)="selectReporterForPenalty(u)"
+
+
+
+                 [ngClass]="{
+
+
+
+                   'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30': selectedPenaltyReporter?.id === u.id,
+
+
+
+                   'border-gray-200 bg-white hover:border-gray-300 cursor-pointer': selectedPenaltyReporter?.id !== u.id
+
+
+
+                 }"
+
+
+
+                 class="p-4 rounded-xl border transition-all flex flex-col justify-between shadow-sm hover:shadow-md">
+
+
+
+              <div>
+
+
+
+                <div class="flex items-center justify-between mb-2">
+
+
+
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+
+
+
+                    {{ u.totalAlerts }} {{ u.totalAlerts === 1 ? 'alerta reportada' : 'alertas reportadas' }}
+
+
+
+                  </span>
+
+
+
+                  <app-sancion-chip [nivel]="getCitizenPenaltyLevel(u.reporter)" size="sm"></app-sancion-chip>
+
+
+
+                </div>
+
+
+
+
+
+
+
+                <div>
+
+
+
+                  <p class="font-bold text-sm text-gray-800 truncate">
+
+
+
+                    {{ (u.reporter.firstName || u.reporter.nombres || '') + ' ' + (u.reporter.lastName || u.reporter.apellidos || '') }}
+
+
+
+                  </p>
+
+
+
+                  <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">
+
+
+
+                    <span class="material-symbols-outlined !text-xs text-gray-400">badge</span>
+
+
+
+                    DNI: {{ u.reporter.dni || 'N/D' }}
+
+
+
+                  </p>
+
+
+
+                  <p class="text-xs text-gray-500 mt-0.5 flex items-center gap-1 truncate">
+
+
+
+                    <span class="material-symbols-outlined !text-xs text-gray-400">call</span>
+
+
+
+                    {{ u.reporter.phone || u.reporter.telefono || 'Sin teléfono' }}
+
+
+
+                  </p>
+
+
+
+                  <p class="text-xs text-gray-500 mt-0.5 flex items-center gap-1 truncate">
+
+
+
+                    <span class="material-symbols-outlined !text-xs text-gray-400">mail</span>
+
+
+
+                    {{ u.reporter.email || 'Sin correo' }}
+
+
+
+                  </p>
+
+
+
+                </div>
+
+
+
+
+
+
+
+                <!-- Alertas asociadas a este usuario -->
+
+
+
+                <div class="mt-3 pt-2.5 border-t border-gray-100">
+
+
+
+                  <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Alertas en este caso:</p>
+
+
+
+                  <div class="flex flex-wrap gap-1">
+
+
+
+                    <span *ngFor="let cod of u.alertCodes" class="text-[10px] font-mono font-bold bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">
+
+
+
+                      {{ cod }}
+
+
+
+                    </span>
+
+
+
+                  </div>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+
+
+
+
+              <div class="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-[11px]">
+
+
+
+                <span *ngIf="isUserPenalizedInIncident(u.id)" class="text-rose-600 font-bold flex items-center gap-1">
+
+
+
+                  <span class="material-symbols-outlined !text-xs">gavel</span> Sancionado en este caso
+
+
+
+                </span>
+
+
+
+                <span *ngIf="!isUserPenalizedInIncident(u.id) && getCitizenPenaltyLevel(u.reporter) > 0" class="text-amber-600 font-bold flex items-center gap-1">
+
+
+
+                  <span class="material-symbols-outlined !text-xs">warning</span> Sanciones previas
+
+
+
+                </span>
+
+
+
+                <span *ngIf="!isUserPenalizedInIncident(u.id) && getCitizenPenaltyLevel(u.reporter) === 0" class="text-emerald-600 font-medium flex items-center gap-1">
+
+
+
+                  <span class="material-symbols-outlined !text-xs">verified</span> Perfil limpio
+
+
+
+                </span>
+
+
+
+                <span class="text-rose-600 font-bold flex items-center gap-0.5 hover:underline">
+
+
+
+                  {{ selectedPenaltyReporter?.id === u.id ? 'Seleccionado ✓' : 'Sancionar →' }}
+
+
+
+                </span>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+
+
+
+
+        <!-- Formulario de aplicación de sanción si hay ciudadano seleccionado -->
+
+
+
+        <div *ngIf="selectedPenaltyReporter" class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-5">
+
+
+
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
+
+
+
+            <div>
+
+
+
+              <span class="text-[10px] uppercase font-bold tracking-wider text-rose-600 bg-rose-50 px-2 py-0.5 rounded">Ciudadano a sancionar</span>
+
+
+
+              <h5 class="text-base font-black text-gray-900 mt-1">
+
+
+
+                {{ (selectedPenaltyReporter.reporter.firstName || selectedPenaltyReporter.reporter.nombres || '') + ' ' + (selectedPenaltyReporter.reporter.lastName || selectedPenaltyReporter.reporter.apellidos || '') }}
+
+
+
+              </h5>
+
+
+
+              <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500 mt-1">
+
+
+
+                <span><strong>DNI:</strong> {{ selectedPenaltyReporter.reporter.dni || 'N/D' }}</span>
+
+
+
+                <span><strong>Tel:</strong> {{ selectedPenaltyReporter.reporter.phone || selectedPenaltyReporter.reporter.telefono || 'N/D' }}</span>
+
+
+
+                <span><strong>Correo:</strong> {{ selectedPenaltyReporter.reporter.email || 'N/D' }}</span>
+
+
+
+                <span><strong>Alertas en este caso:</strong> {{ selectedPenaltyReporter.totalAlerts }}</span>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+            <div class="flex items-center gap-3">
+
+
+
+              <div class="text-right">
+
+
+
+                <span class="text-[10px] text-gray-400 block">Nivel actual</span>
+
+
+
+                <app-sancion-chip [nivel]="getCitizenPenaltyLevel(selectedPenaltyReporter.reporter)" size="md"></app-sancion-chip>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <!-- Banner de estado del alertante: Nivel actual y próxima sanción o bloqueo activo -->
+          <div *ngIf="canEscalateCitizenPenalty(selectedPenaltyReporter)" class="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined text-blue-600 !text-2xl">info</span>
+              <div class="text-xs">
+                <p class="font-bold text-sm text-blue-950">Estado actual del alertante</p>
+                <p class="text-blue-800">Nivel registrado: <strong>{{ getPenaltyLevelLabel(getCitizenPenaltyLevel(selectedPenaltyReporter.reporter)) }}</strong></p>
+              </div>
+            </div>
+            <div class="bg-blue-100 border border-blue-300/70 text-blue-900 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5">
+              <span>Siguiente sanción aplicará:</span>
+              <span class="text-rose-700 font-black">{{ getNextPenaltyLevelLabel(selectedPenaltyReporter) }}</span>
+            </div>
+          </div>
+
+          <!-- Banner si el usuario tiene Bloqueo Temporal activo (< 24h) -->
+          <div *ngIf="!canEscalateCitizenPenalty(selectedPenaltyReporter) && getCitizenPenaltyLevel(selectedPenaltyReporter.reporter) === 2" class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3">
+            <span class="material-symbols-outlined text-amber-600 mt-0.5">timer</span>
+            <div class="text-xs space-y-1">
+              <p class="font-bold text-sm text-amber-950">Bloqueo Temporal Activo (24 Horas)</p>
+              <p>El ciudadano tiene una suspensión temporal activa por 24 horas y no puede emitir alertas.</p>
+              <p class="text-amber-800">Nivel actual: <strong>Nivel 2 (Bloqueo Temporal)</strong>.</p>
+              <p class="text-[11px] text-amber-700 mt-1">No se puede escalar a Nivel 3 hasta que el bloqueo temporal de 24 horas culmine o sea levantado por administración.</p>
+            </div>
+          </div>
+
+          <!-- Banner si el usuario tiene Suspensión Permanente (Nivel 3) -->
+          <div *ngIf="getCitizenPenaltyLevel(selectedPenaltyReporter.reporter) === 3" class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 flex items-start gap-3">
+            <span class="material-symbols-outlined text-rose-600 mt-0.5">block</span>
+            <div class="text-xs space-y-1">
+              <p class="font-bold text-sm text-rose-950">Suspensión Permanente</p>
+              <p>El ciudadano cuenta con una sanción de Nivel 3 (Bloqueo Permanente). La cuenta está suspendida de forma definitiva.</p>
+            </div>
+          </div>
+
+
+
+
+
+
+
+          <!-- Si el ciudadano tiene m?ltiples alertas, permitir seleccionar la alerta de referencia no sancionada -->
+
+
+
+          <div *ngIf="selectedPenaltyReporter.alerts.length > 1" class="bg-rose-50/50 border border-rose-200 rounded-lg p-3">
+            <label class="block text-xs font-bold text-rose-950 mb-1.5">
+              Selecciona la alerta reportada por este ciudadano a asociar como referencia:
+            </label>
+            <div class="flex flex-wrap gap-2">
+              <button *ngFor="let alt of selectedPenaltyReporter.alerts"
+                      type="button"
+                      (click)="selectedPenaltyAlert = alt"
+                      [ngClass]="selectedPenaltyAlert?.alertId === alt.alertId ? 'bg-rose-600 text-white font-black shadow-sm' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'"
+                      class="px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 font-mono">
+                <span>{{ alt.alertCode }}</span>
+                <span class="text-[10px] font-sans opacity-75">({{ alt.emergencyType }})</span>
+                <span *ngIf="isAlertPenalized(alt.alertId)" class="text-[10px] bg-red-100 text-red-800 px-1 rounded font-sans font-bold">Prev. sancionada</span>
+              </button>
+            </div>
+            <p class="text-[11px] text-gray-500 mt-1.5">
+              Alerta de referencia para el castigo: <strong class="font-mono text-gray-800">{{ selectedPenaltyAlert?.alertCode || 'No seleccionada' }}</strong>
+            </p>
+          </div>
+
+          <!-- Selector de Tipo de Falta -->
+
+
+
+          <div>
+
+
+
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
+
+
+
+              Tipo de Infracción cometida
+
+
+
+            </label>
+
+
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+
+
+
+              <button type="button" (click)="selectInfractionType('FALSA_ALARMA')"
+
+
+
+                      [ngClass]="penaltyInfractionType === 'FALSA_ALARMA' ? 'bg-rose-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+
+
+
+                      class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all">
+
+
+
+                <span class="material-symbols-outlined !text-base">notification_important</span> Falsa Alarma
+
+
+
+              </button>
+
+
+
+              <button type="button" (click)="selectInfractionType('CONDUCTA_CHAT')"
+
+
+
+                      [ngClass]="penaltyInfractionType === 'CONDUCTA_CHAT' ? 'bg-rose-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+
+
+
+                      class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all">
+
+
+
+                <span class="material-symbols-outlined !text-base">chat_error</span> Conducta en Chat
+
+
+
+              </button>
+
+
+
+              <button type="button" (click)="selectInfractionType('USO_INDEBIDO')"
+
+
+
+                      [ngClass]="penaltyInfractionType === 'USO_INDEBIDO' ? 'bg-rose-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+
+
+
+                      class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all">
+
+
+
+                <span class="material-symbols-outlined !text-base">warning</span> Uso Indebido
+
+
+
+              </button>
+
+
+
+              <button type="button" (click)="selectInfractionType('OTRO')"
+
+
+
+                      [ngClass]="penaltyInfractionType === 'OTRO' ? 'bg-rose-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+
+
+
+                      class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all">
+
+
+
+                <span class="material-symbols-outlined !text-base">more_horiz</span> Otra Causa
+
+
+
+              </button>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <!-- Si el nivel siguiente amerita bloqueo temporal, permitir seleccionar duración -->
+
+
+
+          <div *ngIf="getCitizenPenaltyLevel(selectedPenaltyReporter.reporter) === 1" class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+
+
+
+            <div class="flex items-center justify-between mb-2">
+
+
+
+              <span class="text-xs font-bold text-amber-900 flex items-center gap-1">
+
+
+
+                <span class="material-symbols-outlined !text-base text-amber-600">timer</span>
+
+
+
+                Esta falta corresponde a Bloqueo Temporal (Nivel 2)
+
+
+
+              </span>
+
+
+
+              <span class="text-[11px] text-amber-800 font-bold">Duración del bloqueo:</span>
+
+
+
+            </div>
+
+
+
+            <div class="flex gap-2">
+
+
+
+              <button *ngFor="let p of penaltyHoursPresets" type="button"
+
+
+
+                      (click)="penaltyTemporaryBlockHours = p.hours"
+
+
+
+                      [ngClass]="penaltyTemporaryBlockHours === p.hours ? 'bg-amber-600 text-white font-black' : 'bg-white text-amber-900 border border-amber-300 hover:bg-amber-100'"
+
+
+
+                      class="py-1 px-3 rounded text-xs font-bold transition-colors">
+
+
+
+                {{ p.label }}
+
+
+
+              </button>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <!-- Motivos frecuentes de ayuda rápida -->
+
+
+
+          <div>
+
+
+
+            <div class="flex items-center justify-between mb-1.5">
+
+
+
+              <label class="text-xs font-bold uppercase tracking-wider text-gray-700">
+
+
+
+                Motivos sugeridos (clic para insertar)
+
+
+
+              </label>
+
+
+
+            </div>
+
+
+
+            <div class="flex flex-wrap gap-1.5">
+
+
+
+              <button *ngFor="let reason of frequentPenaltyReasons[penaltyInfractionType]" type="button"
+
+
+
+                      (click)="useFrequentReason(reason)"
+
+
+
+                      class="text-[11px] bg-gray-50 border border-gray-200 text-gray-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 px-2.5 py-1 rounded-lg transition-colors text-left">
+
+
+
+                + {{ reason }}
+
+
+
+              </button>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <!-- Área de texto del motivo -->
+
+
+
+          <div>
+
+
+
+            <label for="penaltyTabReasonInput" class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+
+
+
+              Detalle y Justificación del Castigo <span class="text-rose-600">*</span>
+
+
+
+            </label>
+
+
+
+            <textarea id="penaltyTabReasonInput" [(ngModel)]="penaltyTabReason" rows="3" maxlength="500"
+
+
+
+                      [disabled]="!canEscalateCitizenPenalty(selectedPenaltyReporter)"
+
+
+
+                      placeholder="Describa claramente la falta cometida, antecedentes o hallazgos del operador..."
+
+
+
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-colors disabled:bg-gray-50 disabled:text-gray-400"></textarea>
+
+
+
+            <div class="flex justify-between items-center text-[11px] text-gray-400 mt-1">
+
+
+
+              <span>Mínimo 5 caracteres. Se registrará automáticamente en la bitácora del incidente.</span>
+
+
+
+              <span>{{ penaltyTabReason.length }}/500</span>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <!-- Botón de acción -->
+
+
+
+          <div class="pt-2 flex justify-end gap-3">
+
+
+
+            <button *ngIf="canPenalizeAlerts" type="button"
+                    (click)="applyPenaltyFromTab()"
+                    [disabled]="isApplyingTabPenalty || penaltyTabReason.trim().length < 5 || !canEscalateCitizenPenalty(selectedPenaltyReporter)"
+                    class="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold py-2.5 px-6 rounded-lg text-sm transition-all shadow-sm">
+              <span class="material-symbols-outlined !text-lg">gavel</span>
+              {{ isApplyingTabPenalty ? 'Aplicando sanción...' : !canEscalateCitizenPenalty(selectedPenaltyReporter) ? 'Sanción No Disponible' : 'Aplicar ' + getNextPenaltyLevelLabel(selectedPenaltyReporter) }}
+            </button>
+
+
+
+            <p *ngIf="!canPenalizeAlerts" class="text-xs text-amber-700 font-bold bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+
+
+
+              Solo operadores y administradores tienen permisos para sancionar alertantes.
+
+
+
+            </p>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+
+
+
+
+        <!-- Historial de sanciones del alertante seleccionado -->
+
+
+
+        <div *ngIf="selectedPenaltyReporter" class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
+
+
+
+          <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+
+
+
+            <div class="flex items-center gap-2">
+
+
+
+              <span class="material-symbols-outlined text-gray-500 !text-xl">history</span>
+
+
+
+              <h5 class="text-sm font-black text-gray-800">
+
+
+
+                Historial de Sanciones de este Ciudadano
+
+
+
+              </h5>
+
+
+
+            </div>
+
+
+
+            <button type="button" (click)="loadReporterPenaltyHistory(selectedPenaltyReporter.id)"
+
+
+
+                    class="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1">
+
+
+
+              <span class="material-symbols-outlined !text-sm">refresh</span> Actualizar
+
+
+
+            </button>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <div *ngIf="isLoadingPenaltyHistory" class="py-6 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
+
+
+
+            <span class="material-symbols-outlined animate-spin !text-base">sync</span> Cargando historial de castigos...
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <div *ngIf="!isLoadingPenaltyHistory && reporterPenaltyHistory.length === 0" class="py-6 text-center text-gray-400">
+
+
+
+            <span class="material-symbols-outlined !text-3xl opacity-40 mb-1">verified_user</span>
+
+
+
+            <p class="text-xs font-bold">Sin antecedentes de sanciones previas.</p>
+
+
+
+            <p class="text-[11px] text-gray-400">Este ciudadano cuenta con un historial disciplinario limpio.</p>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <div *ngIf="!isLoadingPenaltyHistory && reporterPenaltyHistory.length > 0" class="space-y-2">
+
+
+
+            <div *ngFor="let h of reporterPenaltyHistory" class="p-3 bg-gray-50 rounded-lg border border-gray-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+
+
+
+              <div class="space-y-1">
+
+
+
+                <div class="flex items-center gap-2">
+
+
+
+                  <span [ngClass]="{
+
+
+
+                    'bg-rose-100 text-rose-800': h.action === 'APLICAR',
+
+
+
+                    'bg-emerald-100 text-emerald-800': h.action === 'LEVANTAR',
+
+
+
+                    'bg-amber-100 text-amber-800': h.action === 'ACTUALIZAR'
+
+
+
+                  }" class="px-2 py-0.5 rounded text-[10px] font-black uppercase">
+
+
+
+                    {{ h.action }}
+
+
+
+                  </span>
+
+
+
+                  <span class="font-bold text-gray-800">
+
+
+
+                    {{ h.previousLevelLabel || ('Nivel ' + h.previousLevel) }} &rarr; {{ h.newLevelLabel || ('Nivel ' + h.newLevel) }}
+
+
+
+                  </span>
+
+
+
+                </div>
+
+
+
+                <p class="text-gray-600 font-medium italic">"{{ h.reason }}"</p>
+
+
+
+                <div class="flex items-center gap-3 text-[10px] text-gray-400">
+
+
+
+                  <span *ngIf="h.appliedBy">Por: {{ h.appliedBy }}</span>
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+              <div class="text-right text-[11px] text-gray-400 shrink-0">
+
+
+
+                {{ h.recordedAt | date:'dd/MM/yyyy HH:mm' }}
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+
+
+
+
+      </div>
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <!-- ========================================== -->
+
+
+
+    <!-- DRAWER: GUÍA / TUTORIAL -->
+
+
+
+    <!-- ========================================== -->
+
+
+
+    <aside *ngIf="tutorialAbierto" class="absolute top-0 right-0 h-full w-full sm:w-[360px] bg-white border-l border-gray-200 flex flex-col z-40 shadow-2xl animate-slide-in-right">
+
+
+
+      <div class="h-16 shrink-0 flex items-center justify-between px-4 border-b border-gray-100 bg-indigo-600 text-white">
+
+
+
+        <div class="flex items-center gap-2"><span class="material-symbols-outlined !text-lg">school</span><p class="text-sm font-bold">Guía del operador</p></div>
+
+
+
+        <button (click)="toggleTutorial()" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+
+
+
+      </div>
+
+
+
+      <div class="flex-1 overflow-y-auto p-4 space-y-2">
+
+
+
+        <div class="mb-1"><p class="text-[11px] uppercase tracking-wider font-black text-indigo-600 mb-2">Sección activa: {{ pestanaActiva }}</p></div>
+
+
+
+        <div *ngFor="let tip of tipsPorPestana[pestanaActiva].full" class="bg-indigo-50/60 border border-indigo-100 rounded-xl p-3">
+
+
+
+          <p class="text-sm font-bold text-indigo-900 mb-1">{{ tip[0] }}</p>
+
+
+
+          <p class="text-[12.5px] text-indigo-700/90 leading-relaxed">{{ tip[1] }}</p>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+      <div class="p-3 border-t border-gray-100 text-[11px] text-gray-400 text-center">Esta guía cambia según la pestaña que tengas abierta.</div>
+
+
+
+    </aside>
+
+
+
+
+
+
+
+    <!-- ========================================== -->
+
+
+
+    <!-- DRAWER: SALA DE CRISIS (CHAT) -->
+
+
+
+    <!-- ========================================== -->
+
+
+
+    <aside *ngIf="chatAbierto" class="absolute top-0 right-0 h-full w-full sm:w-[450px] bg-white border-l border-gray-200 flex flex-col z-30 shadow-2xl animate-slide-in-right">
+
+
+
+      <div class="h-16 shrink-0 flex items-center justify-between px-4 border-b border-gray-100 bg-gray-900 text-white">
+
+
+
+        <div class="flex items-center gap-2">
+
+
+
+          <span class="material-symbols-outlined !text-lg">forum</span>
+
+
+
+          <div><p class="text-sm font-bold leading-tight">Sala de Crisis</p><p class="text-[10px] text-gray-400 leading-tight">{{ incidenteChat?.trackingCode }}</p></div>
+
+
+
+        </div>
+
+
+
+        <button (click)="cerrarChat()" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+
+
+
+      </div>
+
+
+
+      <app-incident-communications
+
+
+
+        class="flex-1 flex flex-col relative"
+
+
+
+        [abierto]="chatAbierto"
+
+
+
+        [incidente]="incidenteChat"
+
+
+
+        (cerrado)="cerrarChat()">
+
+
+
+      </app-incident-communications>
+
+
+
+    </aside>
+
+
+
+  </section>
+
+
+
+</div>
+
+
+
+
+
+
+
+<!-- ========================================== -->
+
+
+
+<!-- COMPONENTES DE SUPERPOSICIÓN (Toasts de SSE) -->
+
+
+
+<!-- ========================================== -->
+
+
+
+<div *ngIf="toastActual" 
+
+
+
+     class="fixed top-5 right-5 z-[9999] w-80 bg-white shadow-2xl rounded-xl border-l-4 p-4 transform transition-all duration-300"
+
+
+
+     [ngClass]="{'border-red-500': toastActual.gravedad === 'ALTA', 'border-yellow-500': toastActual.gravedad === 'MEDIA', 'border-green-500': toastActual.gravedad === 'BAJA'}">
+
+
+
+  <div class="flex justify-between items-start">
+
+
+
+    <div class="flex-1">
+
+
+
+      <h4 class="font-bold text-gray-800 text-sm">{{ toastActual.titulo }}</h4>
+
+
+
+      <p class="text-xs text-gray-500 mt-1">Incidente: <span class="font-mono font-medium">{{ toastActual.codigo }}</span></p>
+
+
+
+    </div>
+
+
+
+    <button (click)="cerrarToast()" class="text-gray-400 hover:text-gray-600"><span class="material-symbols-outlined text-lg">close</span></button>
+
+
+
+  </div>
+
+
+
+</div>
+
+
+

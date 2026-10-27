@@ -1,0 +1,186 @@
+<div class="login">
+  <!-- Panel de marca: las líneas de emergencia y serenazgo con la ilustración del equipo -->
+  <aside class="brand" [style.--linea]="lineas[lineaActiva()].color">
+    <header class="brand__top">
+      <a class="brand__mark" href="/login" aria-label="Cañete Seguro, inicio">
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="currentColor" focusable="false">
+            <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z"/>
+          </svg>
+        </span>
+        <span class="brand__name">Cañete Seguro</span>
+      </a>
+      @if (horaCanete()) {
+        <p class="brand__time">Lima · {{ horaCanete() }}</p>
+      }
+    </header>
+
+    <div class="brand__intro">
+      <h2 class="brand__title rise" style="--i: 0">Cuatro líneas, una sola central.</h2>
+    </div>
+
+    @let activa = lineas[lineaActiva()];
+    <div class="crew rise" style="--i: 2" [style.--centro]="activa.centro" aria-hidden="true">
+      <span class="crew__stage"></span>
+      @for (l of lineas; track l.nombre; let i = $index) {
+        <span class="crew__slot" [style.--n]="i" [class.is-active]="i === lineaActiva()" (click)="elegirLinea(i)">
+          <img
+            class="crew__figure"
+            [src]="l.img"
+            [style.height]="l.alto"
+            alt=""
+            decoding="async" />
+        </span>
+      }
+    </div>
+
+    <div class="lines rise" style="--i: 3" role="group" aria-label="Líneas de emergencia">
+      @for (l of lineas; track l.nombre; let i = $index) {
+        <button
+          type="button"
+          class="line"
+          [style.--c]="l.color"
+          [class.is-active]="i === lineaActiva()"
+          [attr.aria-pressed]="i === lineaActiva()"
+          (click)="elegirLinea(i)">
+          <span class="line__progress" aria-hidden="true"></span>
+          <span class="line__number">{{ l.numero }}</span>
+          <span class="line__name">{{ l.nombre }}</span>
+        </button>
+      }
+    </div>
+
+    <p class="lines__detail" aria-live="polite">
+      <strong>{{ activa.numero }} · {{ activa.nombre }}.</strong> {{ activa.tarea }}.
+    </p>
+  </aside>
+
+  <!-- Formulario -->
+  <main class="auth">
+    <div class="auth__inner">
+
+      <header class="auth__head rise" style="--i: 1">
+        <h1 class="auth__title">Ingreso a la central</h1>
+        <p class="auth__lead">Un registro para emergencias y patrullaje.</p>
+      </header>
+
+      <fieldset class="account rise" style="--i: 2" [disabled]="enviando()">
+        <legend class="label">Tipo de cuenta</legend>
+        <div class="account__grid">
+          <label class="account__option" [class.is-selected]="modo() === 'dni'">
+            <input type="radio" name="modo" value="dni" [checked]="modo() === 'dni'" (change)="seleccionarModo('dni')" />
+            <span class="account__text">
+              <strong>Personal</strong>
+              <span>Municipal, con DNI</span>
+            </span>
+          </label>
+          <label class="account__option" [class.is-selected]="modo() === 'entidad'">
+            <input type="radio" name="modo" value="entidad" [checked]="modo() === 'entidad'" (change)="seleccionarModo('entidad')" />
+            <span class="account__text">
+              <strong>Entidad</strong>
+              <span>Aliada, con RUC</span>
+            </span>
+          </label>
+          <label class="account__option" [class.is-selected]="modo() === 'municipalidad'">
+            <input type="radio" name="modo" value="municipalidad" [checked]="modo() === 'municipalidad'" (change)="seleccionarModo('municipalidad')" />
+            <span class="account__text">
+              <strong>Municipalidad</strong>
+              <span>Cuenta titular, con RUC</span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
+      <form (ngSubmit)="enviar()" class="form" novalidate>
+        @let campoDoc = modo() === 'dni' ? 'dni' : 'ruc';
+        <div class="field rise" style="--i: 3">
+          <div class="field__head">
+            <label class="label" for="login-documento">
+              {{ modo() === 'dni' ? 'Número de DNI' : modo() === 'entidad' ? 'RUC de la entidad' : 'RUC de la municipalidad' }}
+            </label>
+            <span class="field__count" aria-hidden="true">{{ documento().length }}/{{ longitudDoc() }}</span>
+          </div>
+          <div class="input" [class.is-error]="tieneError(campoDoc)">
+            <input
+              id="login-documento"
+              class="input__control input__control--doc"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              [attr.maxlength]="longitudDoc()"
+              [name]="campoDoc"
+              autocomplete="username"
+              [placeholder]="modo() === 'dni' ? '8 dígitos' : '11 dígitos'"
+              [value]="documento()"
+              (input)="actualizarDocumento($any($event.target))"
+              (blur)="salirDocumento()"
+              [attr.aria-invalid]="tieneError(campoDoc)"
+              [attr.aria-describedby]="tieneError(campoDoc) ? 'login-documento-error' : null" />
+            @if (documento().length === longitudDoc() && !tieneError(campoDoc)) {
+              <span class="input__ok material-symbols-outlined" aria-hidden="true">check_circle</span>
+            }
+          </div>
+          @if (tieneError(campoDoc)) {
+            <p id="login-documento-error" class="field__message" role="alert">{{ errores[campoDoc] }}</p>
+          }
+        </div>
+
+        <div class="field rise" style="--i: 4">
+          <label class="label" for="login-password">Contraseña</label>
+          <div class="input" [class.is-error]="tieneError('password')">
+            <input
+              id="login-password"
+              class="input__control"
+              [type]="mostrarPassword() ? 'text' : 'password'"
+              [(ngModel)]="password"
+              (ngModelChange)="validarCampo('password')"
+              (blur)="validarCampo('password')"
+              name="password"
+              autocomplete="current-password"
+              placeholder="Tu contraseña"
+              [attr.aria-invalid]="tieneError('password')"
+              [attr.aria-describedby]="tieneError('password') ? 'login-password-error' : null" />
+            <button
+              type="button"
+              class="input__toggle"
+              (click)="alternarPassword()"
+              [attr.aria-label]="mostrarPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              [attr.aria-pressed]="mostrarPassword()">
+              <span class="material-symbols-outlined" aria-hidden="true">
+                {{ mostrarPassword() ? 'visibility_off' : 'visibility' }}
+              </span>
+            </button>
+          </div>
+          @if (tieneError('password')) {
+            <p id="login-password-error" class="field__message" role="alert">{{ errores['password'] }}</p>
+          }
+        </div>
+
+        @if (mensajeError()) {
+          <div class="banner" role="alert" animate.enter="field-reveal">
+            <span class="material-symbols-outlined" aria-hidden="true">error</span>
+            <span>{{ mensajeError() }}</span>
+          </div>
+        }
+
+        <button type="submit" class="submit rise" style="--i: 5" [disabled]="enviando()">
+          @if (enviando()) {
+            <svg class="submit__spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.5" stroke-opacity="0.25"/>
+              <path d="M12 2a10 10 0 0110 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+            Validando…
+          } @else {
+            Ingresar al panel
+            <span class="submit__arrow material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          }
+        </button>
+      </form>
+    </div>
+
+    <footer class="auth__footer">
+      <span>© 2026 Municipalidad Provincial de Cañete</span>
+      <span>Gerencia de Seguridad Ciudadana</span>
+    </footer>
+  </main>
+</div>

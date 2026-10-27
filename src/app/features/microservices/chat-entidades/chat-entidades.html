@@ -1,0 +1,329 @@
+<section class="chat-admin-page">
+
+  <!-- ══ HEADER ═════════════════════════════════════════════════════════════ -->
+  <header class="ca-header">
+    <div>
+      <h1 class="ca-title">Chat de Coordinación — Entidades</h1>
+      <p class="ca-subtitle">Comunicación en tiempo real para coordinación operativa entre entidades de emergencia</p>
+    </div>
+    <button class="ca-btn ca-btn--primary" (click)="cargarSalas()" [disabled]="cargandoSalas()">
+      @if (cargandoSalas()) { Cargando... } @else { Actualizar }
+    </button>
+  </header>
+
+  <!-- ══ TARJETAS DE RESUMEN CON DESCRIPCIÓN ═══════════════════════════════ -->
+  <div class="ca-stats">
+    
+    <div class="ca-stat-card">
+      <div class="ca-stat-header">
+        <span class="ca-stat-value">{{ totalSalas() }}</span>
+        <span class="ca-stat-label">Total Salas</span>
+      </div>
+    </div>
+
+    <div class="ca-stat-card ca-stat-card--nivel1">
+      <div class="ca-stat-header">
+        <span class="ca-stat-pill">N1</span>
+        <div class="ca-stat-info">
+          <span class="ca-stat-value">{{ totalNivel1() }}</span>
+          <span class="ca-stat-label">Nivel 1 · Cat + Dist</span>
+        </div>
+      </div>
+      <p class="ca-stat-desc">Sala interna de una categoría en un distrito específico. Ej: todos los Bomberos de San Vicente coordinando entre sí.</p>
+    </div>
+
+    <div class="ca-stat-card ca-stat-card--nivel2">
+      <div class="ca-stat-header">
+        <span class="ca-stat-pill">N2</span>
+        <div class="ca-stat-info">
+          <span class="ca-stat-value">{{ totalNivel2() }}</span>
+          <span class="ca-stat-label">Nivel 2 · Distrital</span>
+        </div>
+      </div>
+      <p class="ca-stat-desc">Todas las entidades de emergencia de un distrito, sin importar su categoría. Coordinación multiinstitucional local.</p>
+    </div>
+
+    <div class="ca-stat-card ca-stat-card--nivel3">
+      <div class="ca-stat-header">
+        <span class="ca-stat-pill">N3</span>
+        <div class="ca-stat-info">
+          <span class="ca-stat-value">{{ totalNivel3() }}</span>
+          <span class="ca-stat-label">Nivel 3 · Provincial</span>
+        </div>
+      </div>
+      <p class="ca-stat-desc">Todas las entidades de una misma categoría en la provincia de Cañete. Coordinación provincial de alto nivel.</p>
+    </div>
+
+    <div class="ca-stat-card ca-stat-card--entidades">
+      <div class="ca-stat-header">
+        <span class="ca-stat-value">{{ totalEntidadesSincronizadas() }}</span>
+        <span class="ca-stat-label">Entidades Sincronizadas</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ CUERPO PRINCIPAL ═══════════════════════════════════════════════════ -->
+  <div class="ca-body">
+
+    <!-- ── PANEL IZQUIERDO: LISTA DE SALAS ───────────────────────────────── -->
+    <div class="ca-panel ca-panel--left">
+      
+      <!-- Filtros (sticky) -->
+      <div class="ca-filters">
+        <input
+          class="ca-search"
+          type="search"
+          placeholder="Buscar sala..."
+          [ngModel]="busqueda()"
+          (ngModelChange)="actualizarBusqueda($event)"
+          aria-label="Buscar sala de chat"
+        />
+        <div class="ca-nivel-tabs" role="tablist" aria-label="Filtrar por nivel">
+          <button
+            class="ca-tab"
+            [class.ca-tab--active]="filtroNivel() === 'TODOS'"
+            (click)="seleccionarFiltro('TODOS')"
+            role="tab"
+            [attr.aria-selected]="filtroNivel() === 'TODOS'"
+          >Todos</button>
+          <button
+            class="ca-tab"
+            [class.ca-tab--active]="filtroNivel() === 'LEVEL_1'"
+            (click)="seleccionarFiltro('LEVEL_1')"
+            role="tab"
+            [attr.aria-selected]="filtroNivel() === 'LEVEL_1'"
+          >Nivel 1</button>
+          <button
+            class="ca-tab"
+            [class.ca-tab--active]="filtroNivel() === 'LEVEL_2'"
+            (click)="seleccionarFiltro('LEVEL_2')"
+            role="tab"
+            [attr.aria-selected]="filtroNivel() === 'LEVEL_2'"
+          >Nivel 2</button>
+          <button
+            class="ca-tab"
+            [class.ca-tab--active]="filtroNivel() === 'LEVEL_3'"
+            (click)="seleccionarFiltro('LEVEL_3')"
+            role="tab"
+            [attr.aria-selected]="filtroNivel() === 'LEVEL_3'"
+          >Nivel 3</button>
+        </div>
+      </div>
+
+      <!-- Estado de carga / error -->
+      @if (cargandoSalas()) {
+        <div class="ca-loading">
+          <span class="ca-spinner" aria-hidden="true"></span>
+          Cargando salas...
+        </div>
+      } @else if (errorSalas()) {
+        <div class="ca-error-box">
+          <strong>Error:</strong> {{ errorSalas() }}
+          <button class="ca-link" (click)="cargarSalas()">Reintentar</button>
+        </div>
+      } @else if (salasFiltradas().length === 0) {
+        <p class="ca-empty">No se encontraron salas de chat.</p>
+      } @else {
+        <!-- Contenedor con scroll para la lista de salas -->
+        <div class="ca-salas-scroll-container">
+          <ul class="ca-sala-list" aria-label="Lista de salas de chat">
+            @for (sala of salasFiltradas(); track sala.id) {
+              <li>
+                <button
+                  class="ca-sala-item"
+                  [class.ca-sala-item--selected]="salaSeleccionada()?.id === sala.id"
+                  [class.ca-sala-item--nivel1]="sala.level === 'LEVEL_1'"
+                  [class.ca-sala-item--nivel2]="sala.level === 'LEVEL_2'"
+                  [class.ca-sala-item--nivel3]="sala.level === 'LEVEL_3'"
+                  (click)="seleccionarSala(sala)"
+                  [attr.aria-pressed]="salaSeleccionada()?.id === sala.id"
+                >
+                  <div class="ca-sala-top">
+                    <span class="ca-sala-nombre">{{ sala.displayName }}</span>
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                      @if (sala.mensajesNoLeidos && sala.mensajesNoLeidos > 0) {
+                        <span class="ca-unread-badge-sala" title="{{ sala.mensajesNoLeidos }} mensajes no leídos">
+                          {{ sala.mensajesNoLeidos }}
+                        </span>
+                      }
+                      <span class="ca-badge" 
+                            [class.ca-badge--nivel1]="sala.level === 'LEVEL_1'"
+                            [class.ca-badge--nivel2]="sala.level === 'LEVEL_2'"
+                            [class.ca-badge--nivel3]="sala.level === 'LEVEL_3'">
+                        {{ sala.level ? sala.level.replace('LEVEL_', 'NIVEL ') : 'N/A' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Descripción legible del propósito de la sala -->
+                  <p class="ca-sala-desc">
+                    @if (sala.level === 'LEVEL_1') {
+                      Coordinación interna: {{ sala.category }} en {{ sala.district }}
+                    } @else if (sala.level === 'LEVEL_2') {
+                      Coordinación multiinstitucional en {{ sala.district }}
+                    } @else {
+                      Coordinación provincial: {{ sala.category }} de toda Cañete
+                    }
+                  </p>
+
+                  <div class="ca-sala-meta">
+                    @if (sala.category) {
+                      <span class="ca-meta-chip">{{ sala.category }}</span>
+                    }
+                    @if (sala.district) {
+                      <span class="ca-meta-chip">{{ sala.district }}</span>
+                    }
+                    <span class="ca-meta-chip ca-meta-chip--count">
+                      {{ sala.totalEntities }} entidad{{ sala.totalEntities !== 1 ? 'es' : '' }}
+                    </span>
+                    <span class="ca-badge-sm" 
+                          [class.ca-badge-sm--active]="sala.active"
+                          [class.ca-badge-sm--inactive]="!sala.active">
+                      {{ sala.active ? 'Activa' : 'Inactiva' }}
+                    </span>
+                  </div>
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+    </div>
+
+    <!-- ── PANEL DERECHO: CHAT DE MENSAJES ────────────────────────────────── -->
+    <div class="ca-panel ca-panel--right">
+      
+      @if (!salaSeleccionada()) {
+        <div class="ca-empty-detail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"/>
+          </svg>
+          <p>Selecciona una sala del panel izquierdo para ver los mensajes</p>
+        </div>
+      } @else {
+        <div class="ca-detail">
+          
+          <!-- Encabezado del chat -->
+          <div class="ca-detail-header">
+            <div>
+              <h2 class="ca-detail-title">{{ salaSeleccionada()!.displayName }}</h2>
+              <p class="ca-detail-subtitle">
+                @if (salaSeleccionada()!.level === 'LEVEL_1') {
+                  {{ salaSeleccionada()!.category }} en {{ salaSeleccionada()!.district }}
+                } @else if (salaSeleccionada()!.level === 'LEVEL_2') {
+                  Todas las entidades de {{ salaSeleccionada()!.district }}
+                } @else {
+                  {{ salaSeleccionada()!.category }} de toda la provincia
+                }
+              </p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <span class="ca-participantes-count">
+                {{ participantesActivos() }} activos
+              </span>
+            </div>
+          </div>
+
+          <!-- Indicador de usuarios escribiendo -->
+          @if (usuariosEscribiendo().length > 0) {
+            <div class="ca-escribiendo-indicator">
+              <span class="ca-escribiendo-text">
+                @if (usuariosEscribiendo().length === 1) {
+                  {{ usuariosEscribiendo()[0] }} está escribiendo
+                } @else if (usuariosEscribiendo().length === 2) {
+                  {{ usuariosEscribiendo()[0] }} y {{ usuariosEscribiendo()[1] }} están escribiendo
+                } @else {
+                  {{ usuariosEscribiendo().length }} usuarios están escribiendo
+                }
+              </span>
+              <span class="ca-escribiendo-dots">
+                <span>.</span><span>.</span><span>.</span>
+              </span>
+            </div>
+          }
+
+          <!-- Área de mensajes -->
+          <div class="ca-scroll-container" #chatScroll>
+            @if (cargandoMensajes()) {
+              <div class="ca-loading">
+                <span class="ca-spinner" aria-hidden="true"></span>
+                Cargando mensajes...
+              </div>
+            } @else if (mensajes().length === 0) {
+              <div class="ca-empty-messages">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" 
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+                <p>No hay mensajes aún. Sé el primero en escribir!</p>
+              </div>
+            } @else {
+              <div class="ca-mensajes-container">
+                @for (mensaje of mensajes(); track mensaje.id) {
+                  <div class="ca-mensaje-item">
+                    <div class="ca-mensaje-avatar">
+                      {{ mensaje.senderName.charAt(0).toUpperCase() }}
+                    </div>
+                    <div class="ca-mensaje-content">
+                      <div class="ca-mensaje-header">
+                        <span class="ca-mensaje-sender">{{ mensaje.senderName }}</span>
+                        <span class="ca-mensaje-time">{{ formatearHora(mensaje.createdAt) }}</span>
+                      </div>
+                      <p class="ca-mensaje-texto">{{ mensaje.message }}</p>
+                      @if (mensaje.edited) {
+                        <span class="ca-mensaje-edited">(editado)</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Área de entrada de mensaje -->
+          <div class="ca-input-area">
+            <div class="ca-input-wrapper">
+              <textarea
+                [ngModel]="nuevoMensaje()"
+                (ngModelChange)="nuevoMensaje.set($event); onInputChange()"
+                placeholder="Escribe un mensaje..."
+                rows="1"
+                class="ca-input"
+                (keydown.enter)="onEnterPress($any($event))"
+                [disabled]="enviandoMensaje()">
+              </textarea>
+              <button
+                type="button"
+                (click)="enviarMensaje()"
+                [disabled]="!nuevoMensaje().trim() || enviandoMensaje()"
+                class="ca-send-btn"
+                aria-label="Enviar mensaje">
+                @if (enviandoMensaje()) {
+                  <svg class="ca-btn-icon animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  </svg>
+                } @else {
+                  <svg class="ca-btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                  </svg>
+                }
+              </button>
+            </div>
+            <p class="ca-input-hint">
+              Presiona <kbd>Enter</kbd> para enviar · <kbd>Shift + Enter</kbd> para nueva línea
+            </p>
+          </div>
+
+        </div>
+      }
+
+    </div>
+
+  </div>
+
+</section>

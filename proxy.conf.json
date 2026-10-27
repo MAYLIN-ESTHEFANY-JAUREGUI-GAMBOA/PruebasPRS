@@ -1,0 +1,9 @@
+{
+  "/api": {
+    "target": "https://lab.vallegrande.edu.pe/canete-seguro",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "pathRewrite": { "^/api": "/api" }
+  }
+}
