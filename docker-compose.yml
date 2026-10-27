@@ -1,0 +1,512 @@
+x-jvm-defaults: &jvm-defaults
+  # Memoria acotada: heap fijo + lÃƒÆ’Ã‚Â­mites de no-heap para quedar
+  JAVA_TOOL_OPTIONS: "-Dreactor.netty.ioWorkerCount=4 -Dreactor.netty.ioSelectCount=1 -Xms64m -Xmx128m -Xss256k -XX:MaxMetaspaceSize=150m -XX:ReservedCodeCacheSize=32m -XX:TieredStopAtLevel=1 -XX:MaxDirectMemorySize=64m -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError"
+  # Swagger apagado en todos los micros
+  SPRINGDOC_APIDOCS_ENABLED: "false"
+  SPRINGDOC_SWAGGERUI_ENABLED: "false"
+  LOGGING_LEVEL_ROOT: WARN
+  # Token compartido para /internal/** entre micros (mismo valor en todos)
+  # Audiencia exigida en el JWT (gateway, usuarios, castigos, municipalidades). VacÃƒÆ’Ã‚Â­o = sin validar aud.
+  KEYCLOAK_AUDIENCE: ${KEYCLOAK_AUDIENCE:-}
+  # Token compartido para /internal/** entre micros (mismo valor en todos)
+  INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+
+services:
+  keycloak:
+    # Imagen propia pre-compilada
+    image: andrehermoza/prs-keycloak:26.2.4-2
+    container_name: prs-keycloak
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mkdir -p /opt/keycloak/data/import
+        # Baked realm first; the local bind mount (if present) overrides it.
+        cp -f /opt/keycloak/realm-seed/*.json /opt/keycloak/data/import/ 2>/dev/null || true
+        cp -f /tmp/keycloak-realm/*.json /opt/keycloak/data/import/ 2>/dev/null || true
+        exec /opt/keycloak/bin/kc.sh start --optimized --import-realm --http-port=8090
+    environment:
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8090}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_PROXY_HEADERS: xforwarded
+      # Heap acotado (por defecto Keycloak toma el 70% del mem_limit).
+      JAVA_OPTS_KC_HEAP: "-Xms128m -Xmx384m"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      AUTH_KEYCLOAK_CLIENT_SECRET: ${AUTH_KEYCLOAK_CLIENT_SECRET}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    # Sin ports en Dokploy (Traefik / red interna). Local: descomenta o usa KEYCLOAK_HOST_PORT.
+    expose:
+     - "8090"
+    # ports:
+    #  - "${KEYCLOAK_HOST_PORT:-8090}:8090"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./keycloak/realm:/tmp/keycloak-realm:ro
+    # 0.5 CPU made token/JWK requests exceed client timeouts
+    mem_limit: 768m
+    cpus: 1.0
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-entidades:
+    image: josemariavalenzuela/vg-ms-entidades:1.4
+    container_name: vg-ms-entidades
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9002
+      SPRING_DATA_MONGODB_URI: ${SPRING_MONGODB_URI_ENTIDADES}
+      MUNICIPALIDADES_SERVICE_URL: http://vg-ms-municipalidades:9011
+      COMMUNICATIONS_SERVICE_URL: http://vg-ms-communications:9008
+      CHAT_SERVICE_URL: http://vg-ms-communications:9008
+      JWT_SECRET: ${JWT_SECRET}
+      KEYCLOAK_ENABLED: "true"
+      KEYCLOAK_TOKEN_MODE: KEYCLOAK
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/PRS}
+      KEYCLOAK_JWK_SET_URI: http://prs-keycloak:8090/realms/PRS/protocol/openid-connect/certs
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://prs-keycloak:8090/realms/PRS/protocol/openid-connect/certs
+    expose:
+      - "9002"
+    mem_limit: 250m
+    memswap_limit: 250m 
+    cpus: 0.2
+    depends_on:
+      - keycloak
+      - kafka
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-auth:
+    image: andrehermoza/vg-ms-auth:3.3
+    container_name: vg-ms-auth
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9001
+      SPRING_MONGODB_URI: ${SPRING_MONGODB_URI_USUARIOS}
+      MONGO_USUARIOS_DATABASE: db_usuarios
+      MONGO_AUTH_DATABASE: db_auth
+      SERVICES_ENTIDADES_URL: http://vg-ms-entidades:9002
+      SERVICES_MUNICIPALIDADES_URL: http://vg-ms-municipalidades:9011
+      KEYCLOAK_SERVER_URL: ${KEYCLOAK_INTERNAL_URL:-http://prs-keycloak:8090}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-PRS}
+      KEYCLOAK_CLIENT_ID: prs-auth
+      KEYCLOAK_CLIENT_SECRET: ${AUTH_KEYCLOAK_CLIENT_SECRET:-prs-auth-secret-change-me}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      CLOUDINARY_CLOUD_NAME: ${AUTH_CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${AUTH_CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${AUTH_CLOUDINARY_API_SECRET}
+      CLOUDINARY_FOLDER_REGISTRO: ${AUTH_CLOUDINARY_FOLDER_REGISTRO:-ciudadanos/identidad}
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_PE_EDU_VALLEGRANDE_CANETESEGURO_AUTH: INFO
+    expose:
+      - "9001"
+    mem_limit: 250m
+    memswap_limit: 250m  
+    cpus: 0.2
+    depends_on:
+      - vg-ms-entidades
+      - keycloak
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-usuarios:
+    image: andrehermoza/vg-ms-usuarios:3.6
+    container_name: vg-ms-usuarios
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9010
+      SPRING_MONGODB_URI: ${SPRING_MONGODB_URI_USUARIOS}
+      MONGO_USUARIOS_DATABASE: db_usuarios
+      MONGO_AUTH_DATABASE: db_auth
+      # Keycloak: ÃƒÆ’Ã‚Âºnico emisor/validador de tokens (issuer pÃƒÆ’Ã‚Âºblico, JWK por red interna)
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/PRS}
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_INTERNAL_URL:-http://prs-keycloak:8090}/realms/${KEYCLOAK_REALM:-PRS}/protocol/openid-connect/certs
+      KEYCLOAK_SERVER_URL: ${KEYCLOAK_INTERNAL_URL:-http://prs-keycloak:8090}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-PRS}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      SERVICES_ENTIDADES_URL: http://vg-ms-entidades:9002
+      SERVICES_CASTIGOS_URL: http://vg-ms-castigos:9009
+      LOGGING_LEVEL_PE_EDU_VALLEGRANDE_CANETESEGURO_USUARIOS: INFO
+      MAIL_ENABLED: "${MAIL_ENABLED:-true}"
+      MAIL_HOST: "${MAIL_HOST:-}"
+      MAIL_PORT: "${MAIL_PORT:-587}"
+      MAIL_USER: "${MAIL_USER:-}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD:-}"
+      MAIL_FROM: "${MAIL_FROM:-noreply@caneteseguro.pe}"
+    expose:
+      - "9010"
+    # ports:
+    #   - "${USUARIOS_HOST_PORT:-9010}:9010"
+    mem_limit: 250m
+    memswap_limit: 250m  
+    cpus: 0.2
+    depends_on:
+      - vg-ms-entidades
+      - keycloak
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-alertas:
+    image: andrehermoza/vg-ms-alertas:7.4
+    container_name: vg-ms-alertas
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9006
+      SPRING_DATA_MONGODB_URI: ${SPRING_MONGODB_URI_ALERTAS}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      SERVICES_INCIDENTES_URL: http://vg-ms-incidentes:9003
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/PRS}
+      KEYCLOAK_JWK_SET_URI: http://prs-keycloak:8090/realms/PRS/protocol/openid-connect/certs
+    expose:
+      - "9006"
+    mem_limit: 250m
+    memswap_limit: 250m  
+    cpus: 0.2
+    depends_on:
+      - keycloak
+      - kafka
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-incidentes:
+    image: josemariavalenzuela/vg-ms-incidents:2.41
+    container_name: vg-ms-incidentes
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9003
+      SPRING_DATA_MONGODB_URI: ${SPRING_MONGODB_URI_INCIDENTES:-mongodb+srv://andre_hermoza:%40Admin_canete-seguro@canete-seguro.0xuzb6l.mongodb.net/db_incidents}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      SERVICES_ENTIDADES_URL: http://vg-ms-entidades:9002
+      SERVICES_MUNICIPALIDADES_URL: http://vg-ms-municipalidades:9011
+      SERVICES_USUARIOS_URL: http://vg-ms-usuarios:9010
+      SERVICES_ALERTAS_URL: http://vg-ms-alertas:9006
+      SERVICES_RECURSOS_URL: http://vg-ms-recursos:9004
+      KEYCLOAK_JWK_SET_URI: http://prs-keycloak:8090/realms/PRS/protocol/openid-connect/certs
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/PRS}
+      #KEYCLOAK_ALLOWED_CLIENT_ID: prs-web
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-dn8ifnkv5}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-912114997188135}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-Uh384m_oPiohREnuU_EUS9sfoew}
+    expose:
+      - "9003"
+    mem_limit: 250m
+    memswap_limit: 250m  
+    cpus: 0.2
+    depends_on:
+      - keycloak
+      - kafka
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-recursos:
+    image: carlosguerrero11/vg-ms-resources:4.9
+    container_name: vg-ms-recursos
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9004
+      SPRING_DATA_MONGODB_URI: ${SPRING_MONGODB_URI_RECURSOS}
+      JWT_SECRET: ${JWT_SECRET}
+      KEYCLOAK_ENABLED: "true"
+      KEYCLOAK_TOKEN_MODE: APP
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/PRS}
+      KEYCLOAK_JWK_SET_URI: http://prs-keycloak:8090/realms/PRS/protocol/openid-connect/certs
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://prs-keycloak:8090/realms/PRS/protocol/openid-connect/certs
+      ENTIDADES_SERVICE_URL: http://vg-ms-entidades:9002
+    expose:
+      - "9004"
+    mem_limit: 250m
+    memswap_limit: 250m  
+    cpus: 0.2
+    depends_on:
+      - keycloak
+      - vg-ms-entidades
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-subasignacion:
+    image: carlosguerrero11/vg-ms-subassignment:3.1
+    container_name: vg-ms-subasignacion
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9015
+      SPRING_DATA_MONGODB_URI: ${SPRING_MONGODB_URI_SUBASIGNACION}
+      JWT_SECRET: ${JWT_SECRET}
+      # APP = JWT HS512 del vg-ms-auth (mismo modo que recursos y entidades)
+      KEYCLOAK_TOKEN_MODE: APP
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/PRS}
+      KEYCLOAK_JWK_SET_URI: http://prs-keycloak:8090/realms/PRS/protocol/openid-connect/certs
+      ENTIDADES_SERVICE_URL: http://vg-ms-entidades:9002
+      RECURSOS_SERVICE_URL: http://vg-ms-recursos:9004
+    expose:
+      - "9015"
+    mem_limit: 250m
+    memswap_limit: 250m  
+    cpus: 0.2
+    depends_on:
+      - keycloak
+      - vg-ms-entidades
+      - vg-ms-recursos
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-castigos:
+    image: andrehermoza/vg-ms-castigos:3.2
+    container_name: vg-ms-castigos
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9009
+      SPRING_MONGODB_URI: ${SPRING_MONGODB_URI_CASTIGOS}
+      # Keycloak: ÃƒÆ’Ã‚Âºnico emisor/validador de tokens (issuer pÃƒÆ’Ã‚Âºblico, JWK por red interna)
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/PRS}
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_INTERNAL_URL:-http://prs-keycloak:8090}/realms/${KEYCLOAK_REALM:-PRS}/protocol/openid-connect/certs
+      SERVICES_AUTH_URL: http://vg-ms-usuarios:9010
+      SERVICES_ALERTAS_URL: http://vg-ms-alertas:9006
+      SERVICES_INCIDENTES_URL: http://vg-ms-incidentes:9003
+      LOGGING_LEVEL_PE_EDU_VALLEGRANDE_CANETESEGURO_CASTIGOS: INFO
+    expose:
+      - "9009"
+    mem_limit: 250m
+    memswap_limit: 250m  
+    cpus: 0.2
+    depends_on:
+      - vg-ms-usuarios
+      - keycloak
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-municipalidades:
+    image: andrehermoza/vg-ms-municipalidades:1.2
+    container_name: vg-ms-municipalidades
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9011
+      SPRING_MONGODB_URI: ${SPRING_MONGODB_URI_MUNICIPALIDADES}
+      # Keycloak: ÃƒÆ’Ã‚Âºnico emisor/validador de tokens (issuer pÃƒÆ’Ã‚Âºblico, JWK por red interna)
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/PRS}
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_INTERNAL_URL:-http://prs-keycloak:8090}/realms/${KEYCLOAK_REALM:-PRS}/protocol/openid-connect/certs
+      CLOUDINARY_CLOUD_NAME: ${AUTH_CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${AUTH_CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${AUTH_CLOUDINARY_API_SECRET}
+      CLOUDINARY_FOLDER_LOGOS: municipalidades/logos
+      LOGGING_LEVEL_PE_EDU_VALLEGRANDE_CANETESEGURO_MUNICIPALIDADES: INFO
+    expose:
+      - "9011"
+    mem_limit: 250m
+    memswap_limit: 250m  
+    cpus: 0.2
+    depends_on:
+      - keycloak
+    restart: unless-stopped
+    networks:
+      - vg-network
+  
+  # vg-ms-media: DEPRECATED - Absorbed into vg-ms-incidentes (Puerto 9003)
+  # (Cloudinary upload signatures are now handled natively by vg-ms-incidentes)
+  vg-ms-catalogos:
+    image: andrehermoza/vg-ms-catalogo:2.0
+    container_name: vg-ms-catalogos
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9005
+      SPRING_DATA_MONGODB_URI: ${SPRING_MONGODB_URI_CATALOGOS}
+      JWT_SECRET: ${JWT_SECRET}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/PRS}
+      KEYCLOAK_JWK_SET_URI: http://prs-keycloak:8090/realms/PRS/protocol/openid-connect/certs
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://prs-keycloak:8090/realms/PRS/protocol/openid-connect/certs
+    expose:
+      - "9005"
+    mem_limit: 250m
+    memswap_limit: 250m 
+    cpus: 0.2
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-flota-mantenimiento:
+    image: valencia123/vg-ms-flota-mantenimiento:5.5
+    container_name: vg-ms-flota-mantenimiento
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9012
+      SPRING_DATA_MONGODB_URI: ${SPRING_MONGODB_URI_FLOTA}
+      JWT_SECRET: ${JWT_SECRET}
+      KEYCLOAK_ENABLED: "true"
+      KEYCLOAK_TOKEN_MODE: KEYCLOAK
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/PRS
+      KEYCLOAK_JWK_SET_URI: http://prs-keycloak:8090/realms/PRS/protocol/openid-connect/certs
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://prs-keycloak:8090/realms/PRS/protocol/openid-connect/certs
+      SERVICES_RECURSOS_URL: http://vg-ms-recursos:9004
+      SERVICES_CATALOGO_URL: http://vg-ms-catalogos:9005
+      SERVICES_INCIDENTES_URL: http://vg-ms-incidentes:9003
+    expose:
+      - "9012"
+    mem_limit: 250m
+    memswap_limit: 250m
+    cpus: 0.2
+    depends_on:
+      - keycloak
+      - vg-ms-recursos
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: vg-redis
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    mem_limit: 250m
+    memswap_limit: 250m
+    cpus: 0.5
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: vg-kafka
+    # Micros use kafka:9092 on vg-network; only the host listener is published (port configurable to avoid VPS clashes).
+    ports:
+      - "${KAFKA_HOST_PORT:-29092}:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_HEAP_OPTS: "-Xmx192m -Xms64m"
+      KAFKA_LOG_CLEANER_ENABLE: "false"
+    mem_limit: 250m
+    memswap_limit: 250m
+    cpus: 0.5
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-communications:
+    image: josemariavalenzuela/vg-ms-communications:2.1
+    container_name: vg-ms-communications
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9008
+      SPRING_DATA_MONGODB_URI: ${SPRING_MONGODB_URI_CHAT:-mongodb+srv://andre_hermoza:%40Admin_canete-seguro@canete-seguro.0xuzb6l.mongodb.net/db_communications}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
+      SERVICES_INCIDENTES_URL: http://vg-ms-incidentes:9003
+      SERVICES_USUARIOS_URL: http://vg-ms-usuarios:9010
+      SERVICES_ALERTAS_URL: http://vg-ms-alertas:9006
+      KEYCLOAK_JWK_SET_URI: http://prs-keycloak:8090/realms/PRS/protocol/openid-connect/certs
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/PRS}
+    expose:
+      - "9008"
+    mem_limit: 250m
+    memswap_limit: 250m  
+    cpus: 0.2
+    depends_on:
+      - keycloak
+      - redis
+      - kafka
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  vg-ms-api-gateway:
+    image: andrehermoza/vg-ms-api-gateway:8.1
+    container_name: vg-ms-api-gateway
+    # ports:
+    #   - "${GATEWAY_HOST_PORT:-9000}:9100"
+    expose:
+      - "9100"
+    environment:
+      <<: *jvm-defaults
+      SERVER_PORT: 9100
+      # Keycloak: ÃƒÆ’Ã‚Âºnico emisor/validador de tokens (issuer pÃƒÆ’Ã‚Âºblico, JWK por red interna)
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8090/realms/PRS}
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_INTERNAL_URL:-http://prs-keycloak:8090}/realms/${KEYCLOAK_REALM:-PRS}/protocol/openid-connect/certs
+      GATEWAY_AUTH_URI: http://vg-ms-auth:9001
+      GATEWAY_USUARIOS_URI: http://vg-ms-usuarios:9010
+      GATEWAY_CASTIGOS_URI: http://vg-ms-castigos:9009
+      GATEWAY_MUNICIPALIDADES_URI: http://vg-ms-municipalidades:9011
+      GATEWAY_ENTIDADES_URI: http://vg-ms-entidades:9002
+      GATEWAY_INCIDENTES_URI: http://vg-ms-incidentes:9003
+      GATEWAY_RECURSOS_URI: http://vg-ms-recursos:9004
+      GATEWAY_SUBASIGNACION_URI: http://vg-ms-subasignacion:9015
+      GATEWAY_ALERTAS_URI: http://vg-ms-alertas:9006
+      GATEWAY_MEDIA_URI: http://vg-ms-incidentes:9003
+      GATEWAY_COMMUNICATIONS_URI: http://vg-ms-communications:9008
+      GATEWAY_CHAT_URI: http://vg-ms-communications:9008
+      GATEWAY_CATALOGOS_URI: http://vg-ms-catalogos:9005
+      GATEWAY_FLOTA_URI: http://vg-ms-flota-mantenimiento:9012
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://localhost:8080,http://localhost:8081,http://localhost:9000,https://lab.vallegrande.edu.pe}
+    mem_limit: 250m
+    memswap_limit: 250m  
+    cpus: 0.2
+    depends_on:
+      - keycloak
+      - vg-ms-auth
+      - vg-ms-usuarios
+      - vg-ms-entidades
+      - vg-ms-alertas
+      - vg-ms-recursos
+      - vg-ms-subasignacion
+      - vg-ms-incidentes
+      - vg-ms-communications
+      - vg-ms-catalogos 
+      - vg-ms-castigos
+      - vg-ms-municipalidades
+      - vg-ms-flota-mantenimiento
+    restart: unless-stopped
+    networks:
+      - vg-network
+
+  # sonarqube:
+  #   image: sonarqube:community
+  #   container_name: prs-sonarqube
+  #   environment:
+  #     SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+  #   ports:
+  #     - "${SONAR_HOST_PORT:-9090}:9000"
+  #   volumes:
+  #     - sonarqube_data:/opt/sonarqube/data
+  #     - sonarqube_extensions:/opt/sonarqube/extensions
+  #     - sonarqube_logs:/opt/sonarqube/logs
+
+  #   mem_limit: 300mb
+  #   cpus: 1.0
+  #   restart: unless-stopped
+  #   networks:
+  #     - vg-network
+
+networks:
+  vg-network:
+    name: vg-network
+    driver: bridge
+
+volumes:
+  # Persistencia Keycloak (usuarios, realm).
+  keycloak_data:
+  # SonarQube. En VPS comenta estos tres si comentas el servicio.
+  # sonarqube_data:
+  # sonarqube_extensions:
+  # sonarqube_logs:

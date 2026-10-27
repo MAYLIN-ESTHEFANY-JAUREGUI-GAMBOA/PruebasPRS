@@ -1,0 +1,174 @@
+server:
+  port: ${SERVER_PORT:9000}
+
+spring:
+  application:
+    name: vg-gateway-caneteseguro
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Keycloak tokens only (PRS realm). In Docker the JWK is fetched over the internal network
+          # (http://keycloak:8090/...), but the token issuer is the public URL.
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/PRS}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8090/realms/PRS/protocol/openid-connect/certs}
+          # Empty = aud not validated. Enable with KEYCLOAK_AUDIENCE=prs-api once Keycloak includes that audience.
+          audiences: ${KEYCLOAK_AUDIENCE:}
+  cloud:
+    discovery:
+      enabled: false
+    gateway:
+      server:
+        webflux:
+          # CORS is set by the gateway; if a service also sends it, the browser rejects the duplicate header.
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Max-Age, RETAIN_FIRST
+            - DedupeResponseHeader=Access-Control-Expose-Headers Access-Control-Allow-Methods Access-Control-Allow-Headers Vary, RETAIN_UNIQUE
+          routes:
+            - id: vg-ms-castigos-admin-usuarios
+              uri: ${GATEWAY_CASTIGOS_URI:http://localhost:9009}
+              predicates:
+                - Path=/api/auth/admin/users/*/penalty
+              filters:
+                - RewritePath=/api/auth/admin/(?<segment>.*), /api/v1/admin/${segment}
+            - id: vg-ms-castigos-historial
+              uri: ${GATEWAY_CASTIGOS_URI:http://localhost:9009}
+              predicates:
+                - Path=/api/auth/admin/penalties,/api/auth/admin/penalties/**
+              filters:
+                - RewritePath=/api/auth/admin/(?<segment>.*), /api/v1/admin/${segment}
+            # Staff penalties (JWT scope enforced in the service). Explicit routes: /api/v1/penalties/users/**
+            # is internal (vg-ms-usuarios, no JWT) and is never routed.
+            - id: vg-ms-castigos-personal
+              uri: ${GATEWAY_CASTIGOS_URI:http://localhost:9009}
+              predicates:
+                - Path=/api/penalties/incidents/*/alerts/*,/api/penalties/status/*,/api/penalties/history
+              filters:
+                - RewritePath=/api/penalties/(?<segment>.*), /api/v1/penalties/${segment}
+
+            # Municipalities (tenants) Ã¢â€ â€™ vg-ms-municipalidades
+            - id: vg-ms-municipalidades
+              uri: ${GATEWAY_MUNICIPALIDADES_URI:http://localhost:9011}
+              predicates:
+                - Path=/api/municipalities,/api/municipalities/**
+              filters:
+                - RewritePath=/api/municipalities(?<segment>.*), /api/v1/municipalities${segment}
+
+            # Most specific routes first
+            # User management (entity panel and administration)
+            - id: vg-ms-usuarios-entidad
+              uri: ${GATEWAY_USUARIOS_URI:http://localhost:9010}
+              predicates:
+                - Path=/api/auth/entity/**
+              filters:
+                - RewritePath=/api/auth/entity/(?<segment>.*), /api/v1/entity/${segment}
+            - id: vg-ms-usuarios-admin
+              uri: ${GATEWAY_USUARIOS_URI:http://localhost:9010}
+              predicates:
+                - Path=/api/auth/admin/**
+              filters:
+                - RewritePath=/api/auth/admin/(?<segment>.*), /api/v1/admin/${segment}
+            # Authenticated user's profile and penalty (app)
+            - id: vg-ms-usuarios-profile
+              uri: ${GATEWAY_USUARIOS_URI:http://localhost:9010}
+              predicates:
+                - Path=/api/auth/profile,/api/auth/penalty
+              filters:
+                - RewritePath=/api/auth/(?<segment>.*), /api/v1/auth/${segment}
+            # Authentication (login/registration) Ã¢â€ â€™ vg-ms-auth
+            - id: vg-ms-auth-core
+              uri: ${GATEWAY_AUTH_URI:http://localhost:9001}
+              predicates:
+                - Path=/api/auth/**
+              filters:
+                - RewritePath=/api/auth/(?<segment>.*), /api/v1/auth/${segment}
+
+            # vg-ms-entidades exposes several resources under /api/**
+            - id: vg-ms-entidades
+              uri: ${GATEWAY_ENTIDADES_URI:http://localhost:9002}
+              predicates:
+                - Path=/api/entities,/api/entities/**
+              filters:
+
+            - id: vg-ms-catalogos
+              uri: ${GATEWAY_CATALOGOS_URI:http://localhost:9005}
+              predicates:
+                - Path=/api/catalogs,/api/catalogs/**
+
+            - id: vg-ms-catalogos-direct
+              uri: ${GATEWAY_CATALOGOS_URI:http://localhost:9005}
+              predicates:
+                - Path=/api/catalogos,/api/catalogos/**
+
+            # vg-ms-recursos exposes all endpoints under /api/v1/resources and legacy /api/resources
+            - id: vg-ms-recursos-v1
+              uri: ${GATEWAY_RECURSOS_URI:http://localhost:9004}
+              predicates:
+                - Path=/api/v1/resources,/api/v1/resources/**
+
+            - id: vg-ms-recursos
+              uri: ${GATEWAY_RECURSOS_URI:http://localhost:9004}
+              predicates:
+                - Path=/api/resources,/api/resources/**
+              filters:
+                - RewritePath=/api/resources(?<segment>/?.*), /api/v1/resources${segment}
+
+            # vg-ms-flota-mantenimiento (vehicle claims and maintenance)
+            - id: vg-ms-flota-mantenimiento
+              uri: ${GATEWAY_FLOTA_URI:http://localhost:9012}
+              predicates:
+                - Path=/api/maintenance-orders,/api/maintenance-orders/**
+              filters:
+                - RewritePath=/api/maintenance-orders(?<segment>/?.*), /api/v1/maintenance-orders${segment}
+
+
+            - id: vg-ms-subasignacion
+              uri: ${GATEWAY_SUBASIGNACION_URI:http://localhost:9015}
+              predicates:
+                - Path=/api/subassignments,/api/subassignments/**,/api/tracking,/api/tracking/**
+
+            - id: vg-ms-communications
+              uri: ${GATEWAY_COMMUNICATIONS_URI:${GATEWAY_CHAT_URI:http://localhost:9008}}
+              predicates:
+                - Path=/api/incidents/*/chat, /api/incidents/*/chat/**, /api/incident/*/chat, /api/incident/*/chat/**, /api/chat-entidades, /api/chat-entidades/**, /ws, /ws/**
+
+            # IMPORTANT: the enriched route really lives at /api/incidents/enriched/**
+            # and must NOT be rewritten. It goes before the generic rule to take priority.
+            - id: vg-ms-incidentes-enriquecidos
+              uri: ${GATEWAY_INCIDENTES_URI:http://localhost:9003}
+              predicates:
+                - Path=/api/incidents/enriched, /api/incidents/enriched/**, /api/incident/enriched, /api/incident/enriched/**, /api/incidentes/entidades, /api/incidentes/entidades/**
+
+            # The service uses /api/incidents
+            - id: vg-ms-incidentes
+              uri: ${GATEWAY_INCIDENTES_URI:http://localhost:9003}
+              predicates:
+                - Path=/api/incidents, /api/incidents/**, /api/incident, /api/incident/**
+
+             # vg-ms-alertas exposes /api/alerts (no /v1)
+            - id: vg-ms-alertas-core
+              uri: ${GATEWAY_ALERTAS_URI:http://localhost:9006}
+              predicates:
+                - Path=/api/alerts,/api/alerts/**
+
+            # Registration selfie Ã¢â€ â€™ vg-ms-auth (auth's own Cloudinary account)
+            - id: vg-ms-auth-cloudinary-registro
+              uri: ${GATEWAY_AUTH_URI:http://localhost:9001}
+              predicates:
+                - Path=/api/cloudinary/signature-registration
+              filters:
+                - RewritePath=/api/cloudinary/signature-registration, /api/v1/auth/cloudinary/signature-registration
+
+            # Evidence upload signature -> handled by vg-ms-incidentes
+            - id: vg-ms-incidentes-media-signature
+              uri: ${GATEWAY_INCIDENTES_URI:http://localhost:9003}
+              predicates:
+                - Path=/api/cloudinary/signature
+              filters:
+                - RewritePath=/api/cloudinary/signature, /api/incidents/media/signature
+
+
+# The audit log (writes and errors) is recorded even with root at WARN (LOGGING_LEVEL_ROOT in compose).
+logging:
+  level:
+    pe.edu.vallegrande.caneteseguro.gateway.filter.RequestAuditFilter: INFO

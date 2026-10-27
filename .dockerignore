@@ -1,0 +1,12 @@
+target/
+.mvn/
+mvnw
+mvnw.cmd
+.git/
+.idea/
+*.iml
+.env
+.env.*
+!.env.example
+keycloak/
+postman/
