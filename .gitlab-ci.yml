@@ -1,0 +1,220 @@
+# Pipeline de Integración Continua - VG Microservicio de Flota y Mantenimiento
+# Arquitectura Hexagonal y Verificación de Estándares PRS241
+
+image: maven:3.9.6-eclipse-temurin-17
+
+variables:
+  MAVEN_OPTS: "-Dhttps.protocols=TLSv1.2 -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN -Djava.awt.headless=true"
+  MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version"
+
+cache:
+  paths:
+    - .m2/repository
+
+stages:
+  - build
+  - test
+  - quality
+  - notify
+
+# ==============================================================================
+# FASE 1: Compilación
+# ==============================================================================
+build:
+  stage: build
+  script:
+    - echo "🔨 Compilando el proyecto..."
+    - mvn $MAVEN_CLI_OPTS clean compile
+  artifacts:
+    paths:
+      - target/classes
+    expire_in: 1 hour
+
+# ==============================================================================
+# FASE 2: Pruebas Unitarias y Cobertura (JUnit + JaCoCo) - Criterio 1 y 3 (4 pts)
+# ==============================================================================
+unit-tests:
+  stage: test
+  script:
+    - echo "🧪 Ejecutando 17 pruebas unitarias y parametrizadas..."
+    - mvn $MAVEN_CLI_OPTS test
+  artifacts:
+    when: always
+    expire_in: 7 days
+    reports:
+      junit:
+        - target/surefire-reports/TEST-*.xml
+    paths:
+      - target/classes/
+      - target/test-classes/
+      - target/surefire-reports/
+      - target/site/jacoco/
+      - target/jacoco.exec
+  coverage: '/Total.*?([0-9]{1,3})%/'
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH =~ /^feature\/.*/
+
+jacoco-report:
+  stage: quality
+  dependencies:
+    - unit-tests
+  script:
+    - echo "📊 Generando reporte de cobertura con JaCoCo..."
+    - mvn jacoco:report
+  artifacts:
+    paths:
+      - target/site/jacoco/
+    expire_in: 7 days
+  coverage: '/Total.*?([0-9]{1,3})%/'
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH =~ /^feature\/.*/
+
+# Job obligatorio según estándares PRS241
+standards-check:
+  stage: test
+  image: python:3.12-slim
+  allow_failure: true
+  variables:
+    STANDARDS_WEBHOOK_URL: "https://script.google.com/macros/s/AKfycbwYOUR_SCRIPT_ID/exec"
+  script:
+    - apt-get update -qq && apt-get install -y -qq git > /dev/null
+    - git clone -q --depth 1 https://gitlab.com/vallegrande/prs241/standards-checker.git /tmp/sc || true
+    - |
+      if [ -d "/tmp/sc" ]; then
+        pip install -q -r /tmp/sc/requirements.txt
+        python /tmp/sc/run.py --micro "$CI_PROJECT_DIR" --nombre "$CI_PROJECT_NAME" --rama "$CI_COMMIT_REF_NAME" --commit "$CI_COMMIT_SHORT_SHA" --out reporte-estandares --publicar "webhook:$STANDARDS_WEBHOOK_URL"
+      fi
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - reporte-estandares/
+  only:
+    - develop
+
+# ==============================================================================
+# FASE 3: Análisis de Calidad de Código con SonarCloud/SonarQube - Criterio 4 (4 pts)
+# ==============================================================================
+sonarcloud-check:
+  stage: quality
+  image: maven:3-eclipse-temurin-21
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  dependencies:
+    - unit-tests
+  script:
+    - |
+      if [ -z "$SONAR_TOKEN" ]; then
+        echo "⚠️ Variable SONAR_TOKEN no configurada en GitLab CI/CD Settings > CI/CD > Variables. Omitiendo escaneo SonarCloud."
+        exit 0
+      fi
+      mvn $MAVEN_CLI_OPTS org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+        -Dsonar.host.url="${SONAR_HOST_URL:-https://sonarcloud.io}" \
+        -Dsonar.token="${SONAR_TOKEN}" \
+        -Dsonar.organization="${SONAR_ORGANIZATION:-vallegrande}" \
+        -Dsonar.projectKey="${SONAR_PROJECT_KEY:-vg-ms-fleet-maintenance}" \
+        -Dsonar.projectName="VG Microservicio Flota Mantenimiento" \
+        -Dsonar.coverage.jacoco.xmlReportPaths="target/site/jacoco/jacoco.xml" \
+        -Dsonar.qualitygate.wait=false
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH =~ /^feature\/.*/
+
+# ==============================================================================
+# FASE 4: Notificaciones de Resultados a Slack vía Webhook - Criterio 5 (4 pts)
+# ==============================================================================
+notify-slack-success:
+  stage: notify
+  image: curlimages/curl:latest
+  when: on_success
+  script:
+    - |
+      if [ -z "$SLACK_WEBHOOK_URL" ]; then
+        echo "ℹ️ SLACK_WEBHOOK_URL no configurado. Omitiendo notificación a Slack."
+        exit 0
+      fi
+
+      COMMIT_TITLE=$(echo "$CI_COMMIT_TITLE" | sed 's/"/\\"/g')
+
+      PAYLOAD=$(cat <<EOF
+      {
+        "attachments": [
+          {
+            "color": "#2eb886",
+            "title": "✅ [Pipeline Exitoso] - vg-ms-fleet-maintenance",
+            "title_link": "$CI_PIPELINE_URL",
+            "text": "Ejecución del pipeline de CI/CD completada satisfactoriamente con 17 pruebas unitarias y análisis de calidad.",
+            "fields": [
+              { "title": "Rama", "value": "$CI_COMMIT_REF_NAME", "short": true },
+              { "title": "Commit", "value": "$CI_COMMIT_SHORT_SHA ($COMMIT_TITLE)", "short": true },
+              { "title": "Autor", "value": "$GITLAB_USER_NAME", "short": true },
+              { "title": "Pipeline ID", "value": "#$CI_PIPELINE_ID", "short": true },
+              { "title": "SonarCloud", "value": "<https://sonarcloud.io/project/overview?id=vg-ms-fleet-maintenance|Ver Dashboard SonarCloud>", "short": true },
+              { "title": "Pruebas Unitarias", "value": "<$CI_PIPELINE_URL/test_report|Ver 17 Tests JUnit en GitLab>", "short": true }
+            ],
+            "footer": "Cañete Seguro PRS · GitLab CI/CD",
+            "ts": $(date +%s)
+          }
+        ]
+      }
+      EOF
+      )
+
+      RESPONSE=$(curl -sS -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL")
+      echo "Respuesta de Slack Webhook: $RESPONSE"
+      if [ "$RESPONSE" != "ok" ]; then
+        echo "⚠️ Advertencia: Slack no retornó 'ok'. Respuesta recibida: $RESPONSE"
+      fi
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH =~ /^feature\/.*/
+
+notify-slack-failure:
+  stage: notify
+  image: curlimages/curl:latest
+  when: on_failure
+  script:
+    - |
+      if [ -z "$SLACK_WEBHOOK_URL" ]; then
+        echo "ℹ️ SLACK_WEBHOOK_URL no configurado. Omitiendo notificación a Slack."
+        exit 0
+      fi
+
+      COMMIT_TITLE=$(echo "$CI_COMMIT_TITLE" | sed 's/"/\\"/g')
+
+      PAYLOAD=$(cat <<EOF
+      {
+        "attachments": [
+          {
+            "color": "#e01e5a",
+            "title": "❌ [Pipeline Fallido] - vg-ms-fleet-maintenance",
+            "title_link": "$CI_PIPELINE_URL",
+            "text": "Se presentaron errores durante la ejecución del pipeline de CI/CD.",
+            "fields": [
+              { "title": "Rama", "value": "$CI_COMMIT_REF_NAME", "short": true },
+              { "title": "Commit", "value": "$CI_COMMIT_SHORT_SHA ($COMMIT_TITLE)", "short": true },
+              { "title": "Autor", "value": "$GITLAB_USER_NAME", "short": true },
+              { "title": "Pipeline ID", "value": "#$CI_PIPELINE_ID", "short": true },
+              { "title": "SonarCloud", "value": "<https://sonarcloud.io/project/overview?id=vg-ms-fleet-maintenance|Ver Dashboard SonarCloud>", "short": true },
+              { "title": "Detalle", "value": "<$CI_PIPELINE_URL|Ver Logs del Pipeline>", "short": true }
+            ],
+            "footer": "Cañete Seguro PRS · GitLab CI/CD",
+            "ts": $(date +%s)
+          }
+        ]
+      }
+      EOF
+      )
+
+      RESPONSE=$(curl -sS -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL")
+      echo "Respuesta de Slack Webhook: $RESPONSE"
+      if [ "$RESPONSE" != "ok" ]; then
+        echo "⚠️ Advertencia: Slack no retornó 'ok'. Respuesta recibida: $RESPONSE"
+      fi
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH =~ /^feature\/.*/

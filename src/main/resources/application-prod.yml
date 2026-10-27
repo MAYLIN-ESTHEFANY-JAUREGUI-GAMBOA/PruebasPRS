@@ -1,0 +1,10 @@
+# Configuración para entorno de Producción (prod)
+logging:
+  level:
+    root: WARN
+    pe.edu.vallegrande.caneteseguro.fleet: INFO
+
+management:
+  endpoint:
+    health:
+      show-details: when-authorized

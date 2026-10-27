@@ -1,0 +1,48 @@
+server:
+  port: ${SERVER_PORT:${PORT:9012}}
+
+spring:
+  application:
+    name: vg-ms-fleet-maintenance
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  data:
+    mongodb:
+      database: ${MONGO_FLEET_DATABASE:db_fleet}
+      uri: ${SPRING_DATA_MONGODB_URI}
+      auto-index-creation: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/PRS}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8090/realms/PRS/protocol/openid-connect/certs}
+
+keycloak:
+  enabled: ${KEYCLOAK_ENABLED:true}
+  token-mode: ${KEYCLOAK_TOKEN_MODE:KEYCLOAK}
+  issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/PRS}
+  jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8090/realms/PRS/protocol/openid-connect/certs}
+
+services:
+  recursos:
+    url: ${SERVICES_RECURSOS_URL:http://localhost:9004}
+  catalogo:
+    url: ${SERVICES_CATALOGO_URL:http://localhost:9005}
+  incidentes:
+    url: ${SERVICES_INCIDENTES_URL:http://localhost:9003}
+
+jwt:
+  secret: ${JWT_SECRET}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+logging:
+  level:
+    pe.edu.vallegrande.caneteseguro.fleet: DEBUG
+    org.springframework.data.mongodb: INFO

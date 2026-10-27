@@ -1,0 +1,254 @@
+{
+  "info": {
+    "name": "vg-ms-flota-mantenimiento API",
+    "description": "Postman Collection for Fleet and Maintenance Microservice - PRS Cañete Seguro (Standard PR241 / Hexagonal DDD)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:9012/api/v1/maintenance-orders",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "Bearer YOUR_JWT_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "entityId",
+      "value": "ENT-68ef45d12a8934bc78901234",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create Maintenance Order",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"entityId\": \"ENT-68ef45d12a8934bc78901234\",\n  \"resourceId\": \"RES-001\",\n  \"resourceIdentifier\": \"E-01\",\n  \"resourceType\": \"AMBULANCE\",\n  \"maintenanceType\": \"CORRECTIVE\",\n  \"priority\": \"HIGH\",\n  \"problemDescription\": \"Fallo en sistema de frenos y cambio de pastillas\",\n  \"currentMileage\": 45200,\n  \"reportedBy\": \"Carlos Mendoza\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}",
+          "host": ["{{baseUrl}}"]
+        }
+      }
+    },
+    {
+      "name": "2. List All Orders",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}",
+          "host": ["{{baseUrl}}"]
+        }
+      }
+    },
+    {
+      "name": "3. Get Order by ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/:id",
+          "host": ["{{baseUrl}}"],
+          "variable": [{ "key": "id", "value": "670c521193b2a543f019bb44" }]
+        }
+      }
+    },
+    {
+      "name": "4. Get Order by Tracking Code",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/code/:trackingCode",
+          "host": ["{{baseUrl}}"],
+          "variable": [{ "key": "trackingCode", "value": "MNT-2026-0001" }]
+        }
+      }
+    },
+    {
+      "name": "5. Get Orders by Resource ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/resource/:resourceId",
+          "host": ["{{baseUrl}}"],
+          "variable": [{ "key": "resourceId", "value": "RES-001" }]
+        }
+      }
+    },
+    {
+      "name": "6. Get Orders by Status",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/status/:status",
+          "host": ["{{baseUrl}}"],
+          "variable": [{ "key": "status", "value": "PENDING" }]
+        }
+      }
+    },
+    {
+      "name": "7. Get Order Detail by ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/:id/detail",
+          "host": ["{{baseUrl}}"],
+          "variable": [{ "key": "id", "value": "670c521193b2a543f019bb44" }]
+        }
+      }
+    },
+    {
+      "name": "8. Assign Workshop",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"workshopName\": \"Taller Central Cañete\",\n  \"workshopAddress\": \"Av. Mariscal Benavides 1234\",\n  \"contactPhone\": \"987654321\",\n  \"workDescription\": \"Reparación integral de frenos\",\n  \"estimatedDeliveryDate\": \"2026-10-30T18:00:00Z\",\n  \"estimatedCost\": 850.50\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/:id/workshop",
+          "host": ["{{baseUrl}}"],
+          "variable": [{ "key": "id", "value": "670c521193b2a543f019bb44" }]
+        }
+      }
+    },
+    {
+      "name": "9. Start Maintenance",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/:id/in-maintenance",
+          "host": ["{{baseUrl}}"],
+          "variable": [{ "key": "id", "value": "670c521193b2a543f019bb44" }]
+        }
+      }
+    },
+    {
+      "name": "10. Register Technical Discharge",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reportNumber\": \"INF-2026-089\",\n  \"technicianName\": \"Ing. Juan Pérez\",\n  \"workPerformed\": \"Cambio completo de discos y pastillas de freno\",\n  \"replacedParts\": \"Discos de freno delanteros, pastillas cerámicas\",\n  \"actualCost\": 820.00,\n  \"operationalApproval\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/:id/discharge",
+          "host": ["{{baseUrl}}"],
+          "variable": [{ "key": "id", "value": "670c521193b2a543f019bb44" }]
+        }
+      }
+    },
+    {
+      "name": "11. Cancel Order",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cancellationReason\": \"Error en ingreso de recurso\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/:id/cancel",
+          "host": ["{{baseUrl}}"],
+          "variable": [{ "key": "id", "value": "670c521193b2a543f019bb44" }]
+        }
+      }
+    },
+    {
+      "name": "12. Close Order",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/:id/close",
+          "host": ["{{baseUrl}}"],
+          "variable": [{ "key": "id", "value": "670c521193b2a543f019bb44" }]
+        }
+      }
+    },
+    {
+      "name": "13. Soft Delete Order",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/:id",
+          "host": ["{{baseUrl}}"],
+          "variable": [{ "key": "id", "value": "670c521193b2a543f019bb44" }]
+        }
+      }
+    },
+    {
+      "name": "14. Restore Order",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "{{token}}" },
+          { "key": "X-Entity-Id", "value": "{{entityId}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/:id/restore",
+          "host": ["{{baseUrl}}"],
+          "variable": [{ "key": "id", "value": "670c521193b2a543f019bb44" }]
+        }
+      }
+    }
+  ]
+}

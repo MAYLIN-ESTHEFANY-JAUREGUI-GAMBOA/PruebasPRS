@@ -1,0 +1,11 @@
+# Configuración para entorno de Desarrollo (dev)
+logging:
+  level:
+    root: INFO
+    pe.edu.vallegrande.caneteseguro.fleet: DEBUG
+    org.springframework.data.mongodb: DEBUG
+
+management:
+  endpoint:
+    health:
+      show-details: always
